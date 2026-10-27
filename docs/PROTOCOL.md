@@ -52,6 +52,10 @@ crc_b = CRC-16/XMODEM over the uncompressed JSON
 
 Both CRCs verified on every received frame (0 failures over ~60 messages).
 
+The G1 also accepts a zstd frame holding one uncompressed ("raw") block, so a sender needs no
+zstd compressor: `28 B5 2F FD | A0 | content size u32 | (len << 3 | 1) u24 | json` (LE). Checked
+with `g1.py --raw`: `BT:apply:trust` (direct) and `WT10:setting:modify` both returned success.
+
 ## 4. JSON messages [HW]
 
 Phone to G1:

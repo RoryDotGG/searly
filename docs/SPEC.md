@@ -34,7 +34,7 @@ ignores it while the probe is out [HW]; the UI says "dock the probe to end the c
 | Framework | Expo SDK 58 (RN 0.88, new architecture), development build | Already scaffolded; config plugins keep `android/` generated |
 | BLE | `react-native-ble-manager` 12.x + its config plugin | Actively maintained, has an Expo plugin, byte arrays in and out (no base64) |
 | zstd decode | `fzstd` (pure JS) | The G1 sends real zstd; Hermes has no zstd |
-| zstd encode | ~10 lines in `src/protocol`, uncompressed "raw block" frames | Commands are under 1 KB, so compression is pointless; avoids a native module |
+| zstd encode | ~10 lines in `src/protocol`, uncompressed "raw block" frames [HW] | Commands are under 1 KB, so compression is pointless; avoids a native module |
 | Identity storage | `expo-secure-store` | Holds `userId`, `deviceId`, peripheral id. Anyone with these can drive the G1 |
 | Random ids | `expo-crypto` | `cmdId`, `cookUuid`, 18-digit `userId` / `deviceId` |
 | Navigation | None. One root component switches on connection state; cook and settings are RN `Modal`s | Two screens do not need a router |
@@ -43,13 +43,12 @@ ignores it while the probe is out [HW]; the UI says "dock the probe to end the c
 Expo Go cannot load the BLE module. Run with `npx expo run:android` (local dev build) or an EAS
 development build.
 
-### Raw-block zstd: verify first
+### Raw-block zstd [HW]
 
 The encoder writes a valid zstd frame with one uncompressed block:
 `28 B5 2F FD | A0 | content size u32 LE | (len << 3 | 1) u24 LE | json`. libzstd decodes this
-(checked against `zstandard` 0.25.0). The G1's ESP32 decoder has not seen it yet. **Before any app
-code**, switch `pack()` in `g1.py` to raw blocks behind a flag and run `send WT10:setting:modify
-'{"volume":"mute"}'` on hardware. If the G1 rejects it, fall back to a native zstd module.
+(checked against `zstandard` 0.25.0), and so does the G1: `g1.py --raw` sent `BT:apply:trust` and
+`WT10:setting:modify '{"volume":"mute"}'` as raw blocks and both returned success.
 
 ## Architecture
 
@@ -185,7 +184,7 @@ debug log screen behind a long press on the header for hardware testing.
 
 ## Build order
 
-1. Verify raw-block zstd on hardware with `g1.py` (above). About 15 minutes.
+1. ~~Verify raw-block zstd on hardware with `g1.py`.~~ Done: the G1 accepts it.
 2. `src/protocol` + vitest fixtures. About 2 hours.
 3. Add BLE deps and plugin config, `G1Session`, a debug screen that pairs and prints reports.
    First hardware milestone. About half a day, mostly MTU and permission edge cases.
@@ -194,7 +193,7 @@ debug log screen behind a long press on the header for hardware testing.
 
 ## Open questions
 
-1. Does the G1 accept raw-block zstd? (step 1 answers it)
+1. ~~Does the G1 accept raw-block zstd?~~ Yes [HW].
 2. Does the G1 fragment notifications to the negotiated MTU?
 3. Target temperature limits in the official app.
 4. Can the phone and `g1.py` share one identity? `direct` mode only checks `userId` and the stored

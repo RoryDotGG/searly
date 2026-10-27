@@ -9,6 +9,8 @@
     uv run g1.py send TYPE JSON  # e.g. send WT10:setting:modify '{"volume":"mute"}'
     uv run g1.py test            # offline self-check of the framing
 
+Add --raw to any command to send uncompressed zstd blocks, which is what the app will send.
+
 Identity (userId/deviceId) is kept in g1-identity.json beside this file.
 """
 import asyncio, json, pathlib, secrets, struct, sys, time, uuid
@@ -21,6 +23,7 @@ CUSTOM = (19 << 2) | 1  # BluFi data frame, subtype 19 "custom data" = 0x4D
 FC_FRAG = 0x10
 MODEL = "WT10"
 IDENTITY = pathlib.Path(__file__).with_name("g1-identity.json")
+RAW = "--raw" in sys.argv
 
 
 def crc16_xmodem(b, crc=0):
@@ -31,9 +34,14 @@ def crc16_xmodem(b, crc=0):
     return crc
 
 
-def pack(obj):
+def zstd_raw(b):
+    """A zstd frame holding one uncompressed block: magic, FHD 0xA0 (single segment, u32 size), block header."""
+    return b"\x28\xb5\x2f\xfd\xa0" + struct.pack("<I", len(b)) + ((len(b) << 3) | 1).to_bytes(3, "little") + b
+
+
+def pack(obj, raw_block=False):
     raw = json.dumps(obj, separators=(",", ":")).encode()
-    comp = zstd.ZstdCompressor(level=3).compress(raw)
+    comp = zstd_raw(raw) if raw_block else zstd.ZstdCompressor(level=3).compress(raw)
     body = struct.pack("<HH", len(comp), len(raw)) + comp
     return b"\xaa\xaa" + body + struct.pack("<HH", crc16_xmodem(body), crc16_xmodem(raw))
 
@@ -89,7 +97,7 @@ class G1:
         obj = {"cmdId": uuid.uuid4().hex, "cmdSeqNo": self.cmd_seq, "cmdType": cmd_type, "cmdData": data or {},
                "deviceId": self.device_id, "deviceType": MODEL, "protocol": "BT",
                "serverTime": now * 1000, "serverTimeSecond": now}
-        pkts, self.seq = frames(self.seq, pack(obj))
+        pkts, self.seq = frames(self.seq, pack(obj, RAW))
         for p in pkts:
             await self.c.write_gatt_char(WRITE, p, response=True)
         return obj["cmdId"]
@@ -172,6 +180,9 @@ async def main(argv):
 def test():
     msg = {"cmdType": "x", "cmdData": {"t": 1}}
     assert unpack(pack(msg)) == msg
+    assert unpack(pack(msg, raw_block=True)) == msg
+    assert zstd.ZstdDecompressor().decompress(zstd_raw(b"")) == b""
+    assert zstd_raw(b"ab").hex() == "28b52ffda0" + "02000000" + "110000" + "6162"  # (2 << 3) | 1 = 0x11
     assert crc16_xmodem(b"123456789") == 0x31C3  # CRC-16/XMODEM check value
     big = pack({"pad": secrets.token_hex(400)})  # incompressible, so it must fragment
     pkts, seq = frames(0, big)
@@ -181,4 +192,5 @@ def test():
 
 
 if __name__ == "__main__":
-    test() if sys.argv[1:2] == ["test"] else asyncio.run(main(sys.argv[1:]))
+    args = [a for a in sys.argv[1:] if a != "--raw"]
+    test() if args[:1] == ["test"] else asyncio.run(main(args))
