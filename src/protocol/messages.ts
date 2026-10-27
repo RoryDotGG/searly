@@ -160,3 +160,11 @@ export function fromTenthsF(t: number, unit: Unit): number {
 export function toTenthsF(v: number, unit: Unit): number {
   return Math.round((unit === "F" ? v : (v * 9) / 5 + 32) * 10);
 }
+
+/**
+ * A cook target for `setParams`. The G1 keeps targets in whole °F and drops the tenths (sent 1616,
+ * reported 1610) [HW], so send the nearest whole °F: the next report then matches what was sent.
+ */
+export function targetTenthsF(v: number, unit: Unit): number {
+  return Math.round(toTenthsF(v, unit) / 10) * 10;
+}

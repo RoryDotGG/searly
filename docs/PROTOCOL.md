@@ -137,9 +137,11 @@ needed (`device:status:request` gets no reply).
 
 - **Temperatures are tenths of a degree Fahrenheit**, whatever unit the trust or display uses.
   `758` = 75.8 °F = 24.3 °C. `setTemperature 1400` = 140 °F = 60 °C (matched the screen).
+  Targets are kept in whole °F: a start or change with `1616` (72 °C) was applied and then
+  reported as `1610` [HW].
 - `areaTemperature` = five zones, tip first. `curTemperature` = the lowest (core) zone.
 - Docked probe collapses to `{probeColor, cookingState: "charged", cookingMode, setParams}`.
-- `cookingState` seen: `charged`, `cooking`. App constants also list `ready`, `resting`, `remove`.
+- `cookingState` seen: `charged` and `charging` (both while docked), `cooking`. App constants also list `ready`, `resting`, `remove`.
 - Taking the probe out of the dock starts a Manual cook at the last target by itself [HW].
 - Reports start within about 200 ms of a successful `direct` trust [HW].
 
@@ -149,7 +151,7 @@ needed (`device:status:request` gets no reply).
 |---|---|---|
 | `BT:apply:trust` | see section 5 | [HW] |
 | `BT:Pair:Result` | `{"result": "success"}` | [HW] |
-| `WT10:setting:modify` | one of `volume` (`high`/`medium`/`quiet`/`mute`), `screenBrightness`, `screenSleepTime`, `readyNotification`, `temperatureUnit`, `lengthUnit`, `weightUnit`, `language` | `volume` [HW], rest [APK] |
+| `WT10:setting:modify` | one of `volume` (`high`/`medium`/`quiet`/`mute`), `screenBrightness`, `screenSleepTime`, `readyNotification`, `temperatureUnit`, `lengthUnit`, `weightUnit`, `language` | `volume` `high`, `medium`, `mute` [HW]; `quiet` gets `failure`, `cmdError: 6` on firmware 25 [HW]; rest [APK] |
 | `WT10:cooking:action` | see section 8 | start, change target [HW]; stop, finish [HW] but no effect while probe is out |
 | `WT10:probe:search` | `{probeColor}` | [APK] |
 | `WT10:alert:dismiss` | `{}` | [APK] |
