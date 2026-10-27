@@ -12,8 +12,7 @@ const UNITS = [
 
 const VOLUMES = [
   { value: "high", label: "High" },
-  { value: "medium", label: "Medium" },
-  { value: "quiet", label: "Quiet" },
+  { value: "low", label: "Quiet" },
   { value: "mute", label: "Mute" },
 ] as const;
 

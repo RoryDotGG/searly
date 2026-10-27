@@ -54,7 +54,7 @@ export interface StatusReport {
   probes: Probe[];
 }
 
-export type Volume = "high" | "medium" | "quiet" | "mute";
+export type Volume = "high" | "medium" | "low" | "mute";
 export type CookingMode = "manual" | "smart";
 
 export function command(
