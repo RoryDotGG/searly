@@ -25,8 +25,11 @@ export type PairFailure = "declined" | "not-found" | "no-reply";
 export type Phase =
   | { kind: "starting" }
   | { kind: "no-identity" }
-  /** `pressOkAt`: when the G1 started waiting for its OK key (it gives up after 35 s). */
-  | { kind: "pairing"; pressOkAt: number | null }
+  /**
+   * `found`: the G1's name once the scan sees it, then Searly connects and asks it to trust this
+   * phone. `pressOkAt`: when the G1 started waiting for its OK key (it gives up after 35 s).
+   */
+  | { kind: "pairing"; found: string | null; pressOkAt: number | null }
   | { kind: "scanning" | "connecting" | "trusting" }
   | { kind: "live" }
   /** `nextAt`: when the next try starts; null while a try is running or the app is in the background. */
@@ -212,15 +215,18 @@ export function useG1() {
     await drop();
     const me = flow.current;
     const alive = () => me === flow.current;
-    setPhase({ kind: "pairing", pressOkAt: null });
+    setPhase({ kind: "pairing", found: null, pressOkAt: null });
     try {
       await ready(true);
       const found = await find(undefined, 20);
       if (!alive()) return;
+      setPhase({ kind: "pairing", found: found.name || "G1", pressOkAt: null });
       const s = await G1Session.connect(found.id, "", events(me));
       if (!alive()) return void s.close();
       session.current = s;
-      const ids = await s.pair(() => alive() && setPhase({ kind: "pairing", pressOkAt: Date.now() }));
+      const ids = await s.pair(
+        () => alive() && setPhase({ kind: "pairing", found: found.name || "G1", pressOkAt: Date.now() }),
+      );
       if (!alive()) return;
       const next: Identity = { ...ids, peripheralId: found.id };
       if (found.name) next.name = found.name;

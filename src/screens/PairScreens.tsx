@@ -7,6 +7,7 @@ import DeviceG1 from "../ui/DeviceG1";
 import HeatDial from "../ui/HeatDial";
 import Icon, { type IconName } from "../ui/Icon";
 import { Callout, Caption, Disc, InlineNote, ListGroup, ListRow, Screen, Well, Wordmark } from "../ui/layout";
+import { Radar } from "./RecoveryScreens";
 import { useNow } from "../ui/motion";
 import { Notice } from "../ui/status";
 import { font, radius, type, useTheme } from "../ui/theme";
@@ -64,10 +65,9 @@ const FAILURE: Record<PairFailure, string> = {
 
 /**
  * Step 1: the drawn G1 shows what to look for, and the ownership warning comes before anything
- * happens. While Searly looks for the G1 the button spins; a failed attempt replaces the warning.
+ * happens. A failed attempt replaces the warning with the reason.
  */
 export function Dock(props: {
-  searching: boolean;
   failure: PairFailure | null;
   onStart: () => void;
   onCancel: () => void;
@@ -81,8 +81,8 @@ export function Dock(props: {
       onTitleLongPress={props.onDebug}
       actions={<IconButton icon="close" label="Cancel pairing" onPress={props.onCancel} />}
       footer={
-        <Button size="lg" block loading={props.searching} onPress={props.onStart}>
-          {props.searching ? "Finding your G1" : "Start pairing"}
+        <Button size="lg" block onPress={props.onStart}>
+          Start pairing
         </Button>
       }
     >
@@ -121,6 +121,40 @@ export function Dock(props: {
           Any other app paired with this G1, including ThermoMaven’s, will be signed out.
         </Notice>
       )}
+    </Screen>
+  );
+}
+
+/**
+ * Between steps 1 and 2: Searly scans for the G1, connects and asks it to trust this phone. It
+ * cannot tell yet whether the probe is docked, so it only says what it is doing.
+ */
+export function PairSearching(props: { found: string | null; onCancel: () => void; onDebug: () => void }) {
+  const t = useTheme();
+  return (
+    <Screen
+      title="Pair a G1"
+      subtitle="Step 1 of 2"
+      onTitleLongPress={props.onDebug}
+      actions={<IconButton icon="close" label="Cancel pairing" onPress={props.onCancel} />}
+      footer={
+        <Button size="lg" block variant="secondary" onPress={props.onCancel}>
+          Cancel
+        </Button>
+      }
+    >
+      <Centered>
+        <Radar />
+        <Text accessibilityRole="header" style={[type.title, { color: t.ink, textAlign: "center" }]}>
+          {props.found ? "Connecting to your G1" : "Looking for your G1"}
+        </Text>
+        <Text style={[type.bodyLg, { color: t.inkMuted, textAlign: "center" }]}>
+          {props.found
+            ? "Asking it to trust this phone. Its Bluetooth symbol starts flashing in a moment."
+            : "Keep it switched on and within a few metres of this phone."}
+        </Text>
+        <Caption>{props.found ? `Found ${props.found}.` : "Looking now."}</Caption>
+      </Centered>
     </Screen>
   );
 }

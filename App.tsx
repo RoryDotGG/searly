@@ -8,7 +8,7 @@ import type { Unit } from "./src/protocol/messages";
 import CookSheet from "./src/screens/CookSheet";
 import DebugLog from "./src/screens/DebugLog";
 import LiveScreen, { pillFor } from "./src/screens/LiveScreen";
-import { Dock, Paired, PressOk, Welcome } from "./src/screens/PairScreens";
+import { Dock, PairSearching, Paired, PressOk, Welcome } from "./src/screens/PairScreens";
 import { BluetoothOff, NotRecognised, Permission, Searching, StorageError, type Bar } from "./src/screens/RecoveryScreens";
 import SettingsSheet, { ForgetSheet } from "./src/screens/SettingsSheet";
 import { IconButton } from "./src/ui/controls";
@@ -101,12 +101,12 @@ function Root() {
   } else if (p.kind === "pairing") {
     screen =
       p.pressOkAt === null ? (
-        <Dock searching failure={null} onStart={g1.pair} onCancel={cancelPair} onDebug={openLog} />
+        <PairSearching found={p.found} onCancel={cancelPair} onDebug={openLog} />
       ) : (
         <PressOk since={p.pressOkAt} onCancel={cancelPair} onDebug={openLog} />
       );
   } else if (p.kind === "error" && p.cause === "pairing") {
-    screen = <Dock searching={false} failure={p.failure} onStart={g1.pair} onCancel={cancelPair} onDebug={openLog} />;
+    screen = <Dock failure={p.failure} onStart={g1.pair} onCancel={cancelPair} onDebug={openLog} />;
   } else if (p.kind === "error" && p.cause === "bluetooth") {
     screen = <BluetoothOff bar={bar} paired={g1.paired} onTurnOn={g1.retry} />;
   } else if (p.kind === "error" && p.cause === "permission") {
@@ -118,11 +118,11 @@ function Root() {
       step === "welcome" ? (
         <Welcome onPair={() => setStep("dock")} onDebug={openLog} />
       ) : (
-        <Dock searching={false} failure={null} onStart={g1.pair} onCancel={cancelPair} onDebug={openLog} />
+        <Dock failure={null} onStart={g1.pair} onCancel={cancelPair} onDebug={openLog} />
       );
   } else if (p.kind === "needs-repair") {
     screen = repairing ? (
-      <Dock searching={false} failure={null} onStart={g1.pair} onCancel={cancelPair} onDebug={openLog} />
+      <Dock failure={null} onStart={g1.pair} onCancel={cancelPair} onDebug={openLog} />
     ) : (
       <NotRecognised bar={bar} onPairAgain={() => setRepairing(true)} onForget={() => setSheet("forget")} />
     );

@@ -139,6 +139,18 @@ function RadarRing(props: { delay: number }) {
   );
 }
 
+/** Rings spreading from a Bluetooth disc: Searly is looking for the G1. */
+export function Radar() {
+  return (
+    <View style={{ width: 200, height: 200, alignItems: "center", justifyContent: "center" }}>
+      <RadarRing delay={0} />
+      <RadarRing delay={1000} />
+      <RadarRing delay={2000} />
+      <Disc tone="signal" icon="bluetooth" size={72} ring={false} />
+    </View>
+  );
+}
+
 /**
  * Searching, connecting or retrying with no reading yet. The retry schedule is shown rather than
  * hidden. `attempt` counts retries (0 is the first try); `nextIn` is set while waiting for one.
@@ -167,12 +179,7 @@ export function Searching(props: {
       }
     >
       <Centered>
-        <View style={{ width: 200, height: 200, alignItems: "center", justifyContent: "center" }}>
-          <RadarRing delay={0} />
-          <RadarRing delay={1000} />
-          <RadarRing delay={2000} />
-          <Disc tone="signal" icon="bluetooth" size={72} ring={false} />
-        </View>
+        <Radar />
         <Title>{props.connecting ? "Connecting to your G1" : "Looking for your G1"}</Title>
         <Lead>Keep it switched on and within a few metres of this phone.</Lead>
         <View style={{ alignSelf: "stretch", marginTop: 16 }}>
