@@ -7,6 +7,8 @@
     uv run g1.py pair            # first time: dock probe, press OK on the G1 when the BT icon flashes
     uv run g1.py watch           # stream status reports (trusted reconnect, no button)
     uv run g1.py send TYPE JSON  # e.g. send WT10:setting:modify '{"volume":"mute"}', then shows the next report
+    uv run g1.py scan [SECS]     # print the advertised dock/base state whenever it changes (no connect)
+    uv run g1.py peek [SECS]     # connect and print every frame for SECS without trust, then disconnect
     uv run g1.py test            # offline self-check of the framing
     uv run g1.py fixtures > ../../src/protocol/fixtures.json   # byte fixtures for the app's vitest
 
@@ -56,6 +58,20 @@ def unpack(p):
     if crcs != (crc16_xmodem(body), crc16_xmodem(raw)):
         raise ValueError("crc mismatch")
     return json.loads(raw)
+
+
+COMPANY = 0x5707  # really byte 0 = device type 7 (WT10), byte 1 = "W"
+BUSY = {2, 3, 4, 6}  # probe states the official app treats as "cooking": pairing refused
+
+
+def adv(data):
+    """Decode manufacturer data (company id stripped) as the official app's scan callback does."""
+    if len(data) < 23:
+        return None
+    base, p12, p34 = data[20], data[22], data[21]
+    return {"version": data[19], "baseState": base >> 4 & 3, "pairing": bool(base & 0x40),
+            "charging": bool(base & 8), "lowPower": bool(base & 4), "hasUser": bool(base & 2),
+            "phoneConnected": bool(base & 1), "probes": [p12 & 15, p12 >> 4, p34 & 15, p34 >> 4]}
 
 
 def frames(seq, data, chunk=253):
@@ -149,8 +165,33 @@ async def connect():
     return BleakClient(dev)
 
 
+async def scan(secs):
+    last = None
+
+    def seen(d, a):
+        nonlocal last
+        data = a.manufacturer_data.get(COMPANY)
+        if not (a.local_name or "").startswith("TM-WT10") or data is None or (state := adv(data)) == last:
+            return
+        last = state
+        busy = any(p in BUSY for p in state["probes"])
+        print(f"{time.strftime('%X')} {data.hex()} {json.dumps(state)} -> {'busy' if busy else 'pairable'}", flush=True)
+
+    async with BleakScanner(seen):
+        await asyncio.sleep(secs)
+
+
+async def peek(secs):
+    async with await connect() as c:
+        await c.start_notify(NOTIFY, lambda _, d: print(f"{time.strftime('%X')} {d.hex()}", flush=True))
+        await asyncio.sleep(secs)
+
+
 async def main(argv):
     cmd = argv[0] if argv else "watch"
+    if cmd in ("scan", "peek"):
+        await (scan if cmd == "scan" else peek)(float(argv[1]) if len(argv) > 1 else 60)
+        return
     if cmd == "pair":
         ident = {"userId": str(secrets.randbelow(9 * 10**17) + 10**17),
                  "deviceId": str(secrets.randbelow(9 * 10**17) + 10**17)}
@@ -188,6 +229,8 @@ def test():
     assert zstd.ZstdDecompressor().decompress(zstd_raw(b"")) == b""
     assert zstd_raw(b"ab").hex() == "28b52ffda0" + "02000000" + "110000" + "6162"  # (2 << 3) | 1 = 0x11
     assert crc16_xmodem(b"123456789") == 0x31C3  # CRC-16/XMODEM check value
+    docked = adv(bytes.fromhex("544130434433314130383043453243 4e41 00000300000800".replace(" ", "")))  # [HW] scan
+    assert docked["version"] == 3 and docked["probes"] == [8, 0, 0, 0] and not docked["pairing"]
     big = pack({"pad": secrets.token_hex(400)})  # incompressible, so it must fragment
     pkts, seq = frames(0, big)
     assert seq == len(pkts) > 1 and all(len(p) <= 259 for p in pkts)

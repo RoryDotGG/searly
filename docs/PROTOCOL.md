@@ -21,11 +21,49 @@ The G1 handset has a screen and four buttons: SET (top left), OK (bottom left), 
 |---|---|
 | Name | `TM-WT10-<4 chars>` |
 | Advertised service | `0xFFFF` |
-| Manufacturer data | company `0x5707`, ASCII `TA` + 12 hex chars (BT MAC) + `CNA`, then 7 bytes |
+| Manufacturer data | company `0x5707`, ASCII `TA` + 12 hex chars (BT MAC) + `CNA`, then state bytes: see 1.1 |
 | GATT | service `0000ffff-…`: `ff01` write (with response), `ff02` notify |
 | MTU | 500 (macOS; Android 17 on a Pixel 10 Pro XL). Notifications are at most 250 bytes |
 
 This is stock Espressif **BluFi**, reused as a message pipe.
+
+### 1.1 Advertised state: dock, owner, pairing
+
+The G1 puts its base and probe state in the manufacturer data, so it can be read **while scanning,
+before connecting or trusting**. This is how the official app knows the dock state during pairing
+[APK]. It also keeps advertising while a phone is connected [HW].
+
+Byte offsets below count from the start of the manufacturer data **after** the 2-byte company id
+(what bleak's `manufacturer_data[0x5707]` and Android's `getManufacturerSpecificData(0x5707)` return).
+The "company id" is not one: its low byte `0x07` is the device type (7 = WT10) and its high byte is
+ASCII `W`. Decoded in `g1.py adv()`; `uv run g1.py scan` prints it live.
+
+| Byte | Meaning | Source |
+|---|---|---|
+| 0–18 | ASCII id `TA…CNA`, zero padded | [HW] |
+| 19 | Protocol version. The official app pairs only version `3` (else "Version incompatible") | [HW] `3`, [APK] |
+| 20 | Base flags: bit 0 phone connected, bit 1 has owner, bit 2 low battery, bit 3 charging, bits 4–5 state (3 = error), bit 6 pairing in progress | [APK]; bits 0, 1, 6 [HW] |
+| 21 | Probe 3 state (low nibble), probe 4 (high nibble) | [APK] |
+| 22 | Probe 1 state (low nibble), probe 2 (high nibble) | [HW] |
+| 23 | Unused, `0` | [HW] |
+
+Probe state nibble, single-probe G1, probe 1 [HW] (probes 2–4 read `0`):
+
+| Value | Seen when |
+|---|---|
+| `9` | Probe in the dock. Shows within about 2 s of docking |
+| `8` | Once, for about 27 s after a removal, before `2`. Also seen once at an unrecorded position. Meaning unknown |
+| `2` | Probe out, cook running (removal auto-starts a Manual cook, section 6). Another removal, 2 s after docking, went straight from `9` to `2` in about 2 s |
+
+The official app greys a G1 out in its device list when any probe nibble is `2`, `3`, `4` or `6`
+("cannot be paired while cooking. Please return your probes to their device base first"), when bit 6
+is set ("currently in a pairing process with another device") or base state is 3 ("Device error")
+[APK, `BtFindDevicesV2Fragment.E`]. It never checks for "docked" directly, so a probe that has just
+come out (`8`) still looks pairable to it. For a "docked" check,
+use **nibble == 9** [HW]; the bit meanings inside the nibble are not known.
+
+Seen [HW] while another client trusted the G1: bits 0 and 6 set at connect, bit 6 cleared about 5 s
+later (trust done), bit 0 cleared on disconnect. Bit 1 (has owner) stayed set throughout.
 
 ## 2. BluFi framing [HW]
 
@@ -89,7 +127,9 @@ command seen to get a receipt while untrusted.
 
 ### First time (`mode: "pair"`)
 
-1. **Dock the probe.**
+1. **Dock the probe.** Read it from the advertisement before connecting (section 1.1). Nothing
+   arrives over GATT before trust: 15 s connected and subscribed to `ff02`, untrusted, with the
+   probe out, gave zero notifications [HW].
 2. Send `BT:apply:trust`, `deviceId: ""`:
    `{"userId", "deviceModel", "mode": "pair", "lengthUnit", "temperatureUnit", "weightUnit"}`
 3. Receipt `cmdError: 10` arrives at once = waiting for the user. The Bluetooth icon flashes.

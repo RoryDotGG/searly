@@ -76,6 +76,7 @@ function Root() {
     setRepairing(false);
   };
 
+  const watch = { advert: g1.advert, onWatch: g1.watchDock };
   const pill = pillFor(g1, now);
   const bar: Bar = g1.paired
     ? {
@@ -106,7 +107,7 @@ function Root() {
         <PressOk since={p.pressOkAt} onCancel={cancelPair} onDebug={openLog} />
       );
   } else if (p.kind === "error" && p.cause === "pairing") {
-    screen = <Dock failure={p.failure} onStart={g1.pair} onCancel={cancelPair} onDebug={openLog} />;
+    screen = <Dock failure={p.failure} {...watch} onStart={g1.pair} onCancel={cancelPair} onDebug={openLog} />;
   } else if (p.kind === "error" && p.cause === "bluetooth") {
     screen = <BluetoothOff bar={bar} paired={g1.paired} onTurnOn={g1.retry} />;
   } else if (p.kind === "error" && p.cause === "permission") {
@@ -118,11 +119,11 @@ function Root() {
       step === "welcome" ? (
         <Welcome onPair={() => setStep("dock")} onDebug={openLog} />
       ) : (
-        <Dock failure={null} onStart={g1.pair} onCancel={cancelPair} onDebug={openLog} />
+        <Dock failure={null} {...watch} onStart={g1.pair} onCancel={cancelPair} onDebug={openLog} />
       );
   } else if (p.kind === "needs-repair") {
     screen = repairing ? (
-      <Dock failure={null} onStart={g1.pair} onCancel={cancelPair} onDebug={openLog} />
+      <Dock failure={null} {...watch} onStart={g1.pair} onCancel={cancelPair} onDebug={openLog} />
     ) : (
       <NotRecognised bar={bar} onPairAgain={() => setRepairing(true)} onForget={() => setSheet("forget")} />
     );

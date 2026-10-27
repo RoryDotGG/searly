@@ -117,7 +117,10 @@ are errors with a retry button.
 
 ### Pairing [HW]
 
-1. Screen: "Put the probe in the dock". Button: Pair.
+1. Screen: "Put the probe in the dock". Button: Pair. While it shows, scan and read the dock state
+   from the G1's adverts (PROTOCOL.md section 1.1): "Probe docked" when every probe reads docked;
+   with a probe out, or another phone mid-pairing, say so and hold the button. No advert seen in
+   10 s (no permission yet, Bluetooth off, out of range): just the instruction, button enabled.
 2. Generate `userId` and `deviceId` (18 random digits each, first digit non-zero).
 3. `BT:apply:trust` with `mode: "pair"`, envelope `deviceId: ""`, timeout 35 s.
 4. Receipt `cmdError: 10`: show "Press OK on the G1".
