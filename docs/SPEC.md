@@ -1,7 +1,7 @@
 # Searly Android app: v1 spec
 
-Status: **planned**. Nothing in this document is built yet except the empty Expo scaffold at the
-repo root. Protocol facts come from [PROTOCOL.md](PROTOCOL.md) and the Python reference client in
+Status: **in progress**. Built so far: the Expo scaffold and `src/protocol` (build order step 2).
+Everything else in this document is planned. Protocol facts come from [PROTOCOL.md](PROTOCOL.md) and the Python reference client in
 [experiments/python](../experiments/python); tags **[HW]** / **[APK]** keep their meaning from there.
 
 ## Goal
@@ -185,7 +185,7 @@ debug log screen behind a long press on the header for hardware testing.
 ## Build order
 
 1. ~~Verify raw-block zstd on hardware with `g1.py`.~~ Done: the G1 accepts it.
-2. `src/protocol` + vitest fixtures. About 2 hours.
+2. ~~`src/protocol` + vitest fixtures.~~ Done: `npm test`, fixtures from `g1.py fixtures`.
 3. Add BLE deps and plugin config, `G1Session`, a debug screen that pairs and prints reports.
    First hardware milestone. About half a day, mostly MTU and permission edge cases.
 4. `useG1` state machine, LiveScreen. About half a day.

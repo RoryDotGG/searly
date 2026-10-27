@@ -24,6 +24,7 @@ React Native API:
 npx expo install <package>  # use instead of npm install <package>: resolves SDK-compatible versions
 npx expo run:android        # build and run a development build (Expo Go cannot load the BLE module)
 npx tsc --noEmit            # typecheck
+npm test                    # vitest: src/protocol against fixtures from g1.py
 npx expo-doctor             # diagnose dependency and config issues
 uv run experiments/python/g1.py test   # offline protocol self-check
 ```
