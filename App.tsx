@@ -94,7 +94,9 @@ function Root() {
   let screen;
   if (p.kind === "starting") {
     screen = <View style={{ flex: 1, backgroundColor: t.ground }} />;
-  } else if (justPaired && p.kind === "live") {
+  } else if ((justPaired || prev.current === "pairing") && p.kind === "live") {
+    // `prev` still holds "pairing" on the render that goes live, before the effect above sets
+    // justPaired: without it that one frame showed the searching screen.
     screen = <Paired name={g1.name} onContinue={() => setJustPaired(false)} />;
   } else if (p.kind === "pairing") {
     screen =
