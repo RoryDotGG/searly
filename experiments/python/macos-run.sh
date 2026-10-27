@@ -2,9 +2,9 @@
 set -euo pipefail
 # macOS kills any process using Bluetooth whose responsible app lacks NSBluetoothAlwaysUsageDescription,
 # and a terminal is not enough. This wraps `uv run g1.py ARGS` in a tiny ad-hoc signed .app so
-# CoreBluetooth allows it, and streams its output here. Usage: tools/macos-run.sh watch
+# CoreBluetooth allows it, and streams its output here. Usage: experiments/python/macos-run.sh watch
 
-here="$(cd "$(dirname "$0")/.." && pwd)"
+here="$(cd "$(dirname "$0")" && pwd)"
 app="${XDG_CACHE_HOME:-$HOME/.cache}/searly/Searly.app"
 log="$(mktemp -t searly)"
 

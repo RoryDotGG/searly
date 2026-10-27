@@ -4,7 +4,7 @@ Reverse engineered on 2026-10-27 against a real G1 (firmware `appVersion` / `con
 and the official Android app `com.auros.thermomaven` (web bundle 1.9.10). Everything marked
 **[HW]** was observed on the device. **[APK]** means it was read from the app but not yet exercised.
 
-The whole thing works offline. No account, no cloud, no Wi-Fi. Reference client: [g1.py](g1.py).
+The whole thing works offline. No account, no cloud, no Wi-Fi. Reference client: [g1.py](../experiments/python/g1.py).
 
 ## Topology
 

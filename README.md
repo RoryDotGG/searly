@@ -22,9 +22,26 @@ no Wi-Fi, no tracking, no app store. It is the groundwork for a small, fast, off
 Tested against one G1 on firmware 25. Other ThermoMaven models (P1, P2, G2, G4) appear to share the
 protocol with a different model code, but are untested.
 
-## Quick start
+## Repo layout
 
-Needs [uv](https://docs.astral.sh/uv/) and Bluetooth.
+| Path | What |
+|---|---|
+| `/` | The Android app (Expo / React Native). Planned in [docs/SPEC.md](docs/SPEC.md); only the scaffold exists so far |
+| `docs/PROTOCOL.md` | The reverse-engineered BLE protocol |
+| `experiments/python/` | Python reference client used to work out the protocol |
+
+## App (in progress)
+
+Needs Node 22+, Android Studio's SDK and an Android phone with Bluetooth (the emulator has none).
+
+```bash
+npm install
+npx expo run:android
+```
+
+## Python client quick start
+
+Needs [uv](https://docs.astral.sh/uv/) and Bluetooth. Run from `experiments/python`.
 
 1. Put the probe in the dock.
 2. `uv run g1.py pair`, then press **OK** on the G1 when the Bluetooth icon flashes.
@@ -37,7 +54,7 @@ base bat 83% | probe1 cooking 23.7°C ambient 24.3°C bat 100%
 Send any command: `uv run g1.py send WT10:setting:modify '{"volume":"mute"}'`.
 Offline self-check: `uv run g1.py test`.
 
-On **macOS** run it through `tools/macos-run.sh watch` instead. macOS only lets an app with a
+On **macOS** run it through `./macos-run.sh watch` instead. macOS only lets an app with a
 Bluetooth usage description use Bluetooth, so the script wraps the client in a tiny local `.app`.
 
 Pairing makes this client the G1's owner. To go back to the official app, pair from there again.
@@ -47,7 +64,7 @@ Pairing makes this client the G1's owner. To go back to the official app, pair f
 The G1 handset is an ESP32 that exposes Espressif BluFi. Commands are zstd-compressed JSON wrapped
 in BluFi custom-data frames, the same messages the official app sends through the cloud. The full
 write-up, including what was verified on hardware and what was only read from the app, is in
-[PROTOCOL.md](PROTOCOL.md).
+[docs/PROTOCOL.md](docs/PROTOCOL.md).
 
 ## Credits
 
