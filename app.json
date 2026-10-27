@@ -5,14 +5,14 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "package": "gg.rory.searly",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0f0d0c",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -26,7 +26,43 @@
           "neverForLocation": true
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "assets/fonts/Bricolage-Heading.ttf",
+            "assets/fonts/Bricolage-Hero.ttf",
+            "assets/fonts/Bricolage-HeroUnit.ttf",
+            "assets/fonts/Bricolage-Text.ttf",
+            "assets/fonts/Bricolage-TextBold.ttf",
+            "assets/fonts/Bricolage-Title.ttf",
+            "assets/fonts/Bricolage-TitleLg.ttf",
+            "assets/fonts/Bricolage-Wordmark.ttf",
+            "assets/fonts/Bricolage-XL.ttf",
+            "assets/fonts/Bricolage-XLUnit.ttf",
+            "assets/fonts/InstrumentSans-650.ttf",
+            "node_modules/@expo-google-fonts/instrument-sans/400Regular/InstrumentSans_400Regular.ttf",
+            "node_modules/@expo-google-fonts/instrument-sans/500Medium/InstrumentSans_500Medium.ttf",
+            "node_modules/@expo-google-fonts/instrument-sans/600SemiBold/InstrumentSans_600SemiBold.ttf",
+            "node_modules/@expo-google-fonts/instrument-sans/700Bold/InstrumentSans_700Bold.ttf",
+            "node_modules/@expo-google-fonts/jetbrains-mono/400Regular/JetBrainsMono_400Regular.ttf",
+            "node_modules/@expo-google-fonts/jetbrains-mono/600SemiBold/JetBrainsMono_600SemiBold.ttf"
+          ]
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#f4eee7",
+          "image": "./assets/splash-icon-light.png",
+          "imageWidth": 120,
+          "dark": {
+            "backgroundColor": "#0f0d0c",
+            "image": "./assets/splash-icon.png"
+          }
+        }
+      ]
     ]
   }
 }

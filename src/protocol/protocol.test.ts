@@ -6,7 +6,7 @@ import { frames, Reassembler } from "./blufi";
 import { crc16 } from "./crc";
 import { pack, unpack } from "./envelope";
 import fixtures from "./fixtures.json";
-import { command, fromTenthsF, incoming, receiptError, setCook, statusReport, toTenthsF } from "./messages";
+import { command, fromTenthsF, incoming, receiptError, setCook, statusReport, targetTenthsF, toTenthsF } from "./messages";
 
 const hex = (s: string) => new Uint8Array(s.match(/../g)?.map((b) => parseInt(b, 16)) ?? []);
 const toHex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
@@ -128,4 +128,10 @@ test("tenths of °F convert both ways", () => {
   expect(toTenthsF(60, "C")).toBe(1400);
   expect(toTenthsF(65, "C")).toBe(1490);
   expect(toTenthsF(212, "F")).toBe(2120);
+});
+
+test("cook targets are whole °F, as the G1 keeps them", () => {
+  expect(targetTenthsF(72, "C")).toBe(1620); // 161.6 °F; the G1 stored 1616 as 1610 [HW]
+  expect(targetTenthsF(70, "C")).toBe(1580);
+  expect(targetTenthsF(149, "F")).toBe(1490);
 });
