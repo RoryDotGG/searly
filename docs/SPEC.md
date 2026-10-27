@@ -1,7 +1,7 @@
 # Searly Android app: v1 spec
 
-Status: **in progress**. Built so far: `src/protocol`, `G1Session` and a debug screen (build order
-steps 1 to 3).
+Status: **in progress**. Built so far: `src/protocol`, `G1Session`, `useG1`, PairScreen and
+LiveScreen (build order steps 1 to 4).
 Everything else in this document is planned. Protocol facts come from [PROTOCOL.md](PROTOCOL.md) and the Python reference client in
 [experiments/python](../experiments/python); tags **[HW]** / **[APK]** keep their meaning from there.
 
@@ -79,8 +79,9 @@ src/screens/                      PairScreen, LiveScreen, CookModal, SettingsMod
 | Connect | `connect(id)` then `retrieveServices(id)` | |
 | MTU | `requestMTU(id, 512)` | **Required.** Android starts at 23, frames are up to 259 bytes. Write chunk = `min(253, mtu - 3 - 6)` |
 | Notify | `startNotification(id, "ffff", "ff02")`, `onDidUpdateValueForCharacteristic` | Feed bytes to the Reassembler |
+| Sync | "get version" control frames with seq 0, 1, 2… until one is not answered with a BluFi error | **Required.** The G1 enforces `seq`, and after a hard kill Android can reuse the old link, so the G1 still expects the old count [HW]. One round trip on a fresh link |
 | Write | `write(id, "ffff", "ff01", frame, frame.length)` once per frame, awaited in order | **Pass `maxByteSize`**: it defaults to 20 and the library would split frames itself |
-| Disconnect | `onDisconnectPeripheral` | Reset `seq` and the Reassembler; keep `cmdSeqNo` |
+| Disconnect | `onDisconnectPeripheral` | Reset the Reassembler; keep `cmdSeqNo`. `seq` comes from Sync |
 
 All writes go through one promise queue so frames from two commands never interleave.
 
@@ -103,10 +104,14 @@ no-identity ──pair──▶ pairing ──success──▶ live
 identity ──▶ scanning ▶ connecting ▶ trusting ──success──▶ live
                                        └── cmdError 11 ──▶ needs-repair (keep identity, offer re-pair)
 live ──disconnect──▶ reconnecting (1, 2, 5, 10 s, then every 10 s) ──▶ scanning
-any step ──BT off / permission denied / scan timeout──▶ error (reason + retry)
+any connect failure with an identity (not found, no reply, dropped) ──▶ reconnecting
+any step ──BT off / permission denied──▶ error (reason + retry)
 ```
 
-Reconnect only while the app is in the foreground in v1.
+Reconnect only while the app is in the foreground in v1: a retry that falls due in the background
+waits for the app to return. An error retries by itself when Bluetooth turns on, or when the app
+returns from Settings after a permanent permission denial. Without an identity, pairing failures
+are errors with a retry button.
 
 ### Pairing [HW]
 
@@ -189,7 +194,10 @@ debug log screen behind a long press on the header for hardware testing.
 2. ~~`src/protocol` + vitest fixtures.~~ Done: `npm test`, fixtures from `g1.py fixtures`.
 3. ~~Add BLE deps and plugin config, `G1Session`, a debug screen that pairs and prints reports.~~
    Done: paired, streamed reports and reconnected without a button on a Pixel 10 Pro XL (Android 17).
-4. `useG1` state machine, LiveScreen. About half a day.
+4. ~~`useG1` state machine, LiveScreen.~~ Done on the Pixel: cold start, kill and reopen (8/8),
+   Bluetooth off and on, background then foreground, out of range and back, probe docked and out.
+   Not verified: deny-then-grant permissions (this phone auto-granted the permission to the debug
+   build), to redo with the step 5 checklist.
 5. CookModal and SettingsModal, then the hardware acceptance checklist. About half a day.
 
 ## Open questions

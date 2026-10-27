@@ -2,6 +2,11 @@
 
 /** Data frame, subtype 19 "custom data". The only type the G1 uses. */
 export const CUSTOM = (19 << 2) | 1;
+/** Data frame, subtype 18 "error report". One data byte: 0 = sequence error [HW]. */
+export const ERROR = (18 << 2) | 1;
+/** Control frame, subtype 7 "get version", and the data frame (subtype 16) that answers it. */
+export const GET_VERSION = (7 << 2) | 0;
+export const VERSION = (16 << 2) | 1;
 const FC_FRAG = 0x10;
 
 /**

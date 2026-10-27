@@ -87,6 +87,18 @@ export function receiptError(r: Receipt): string {
   }
 }
 
+/** The status report in a message, or null if it is not one. Probe fields stay optional. */
+export function statusReport(m: Incoming): StatusReport | null {
+  if (!m.cmdType.endsWith(":status:report")) return null;
+  const d = m.cmdData as Partial<StatusReport> | null;
+  if (typeof d !== "object" || d === null || !Array.isArray(d.probes)) return null;
+  const probes = d.probes.filter(
+    (p): p is Probe =>
+      typeof p === "object" && p !== null && typeof p.probeColor === "string" && Array.isArray(p.setParams),
+  );
+  return { batteryValue: d.batteryValue ?? 0, volume: d.volume ?? "high", probes };
+}
+
 /** Narrow a decoded payload to a message, or null if it is not one. */
 export function incoming(x: unknown): Incoming | null {
   if (typeof x !== "object" || x === null) return null;

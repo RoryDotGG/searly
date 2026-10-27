@@ -6,7 +6,7 @@ import { frames, Reassembler } from "./blufi";
 import { crc16 } from "./crc";
 import { pack, unpack } from "./envelope";
 import fixtures from "./fixtures.json";
-import { command, fromTenthsF, incoming, receiptError, setCook, toTenthsF } from "./messages";
+import { command, fromTenthsF, incoming, receiptError, setCook, statusReport, toTenthsF } from "./messages";
 
 const hex = (s: string) => new Uint8Array(s.match(/../g)?.map((b) => parseInt(b, 16)) ?? []);
 const toHex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
@@ -55,7 +55,19 @@ test("command() builds the same envelope as g1.py", () => {
 test("a fragmented, zstd-compressed status report decodes", () => {
   const msg = unpack(reassemble(fixtures.report.frames)!);
   expect(msg).toEqual(fixtures.report.obj);
-  expect(incoming(msg)?.cmdType).toBe("WT10:status:report");
+  const report = statusReport(incoming(msg)!);
+  expect(report?.batteryValue).toBe(83);
+  expect(report?.probes.map((p) => [p.probeColor, p.cookingState, p.curTemperature])).toEqual([
+    ["probe1", "cooking", 758],
+    ["probe2", "charged", undefined],
+  ]);
+});
+
+test("statusReport ignores other messages and malformed probes", () => {
+  const m = (cmdType: string, cmdData: unknown) => ({ cmdId: "x", cmdType, cmdData });
+  expect(statusReport(m("device:cmd:receipt", {}))).toBeNull();
+  expect(statusReport(m("WT10:status:report", { probes: "nope" }))).toBeNull();
+  expect(statusReport(m("WT10:status:report", { probes: [null, { probeColor: "p" }] }))?.probes).toEqual([]);
 });
 
 test("frames respect a small chunk", () => {

@@ -34,7 +34,12 @@ This is stock Espressif **BluFi**, reused as a message pipe.
 ```
 
 - Only one frame type is used: `type = 0x4D` (data frame, subtype 19 "custom data").
-- `seq` counts from 0 per direction per connection; the device does not appear to enforce it.
+- `seq` counts from 0 per direction per link. The G1 **enforces** the phone-to-G1 count [HW]: a
+  frame with the wrong `seq` is answered with an error frame `49 04 <seq> 01 00` (data subtype 18,
+  error 0 = sequence error) and the count does not advance. Android can hand a hard-killed app's
+  link to the next process, so the G1 keeps counting from the old session. Recover by sending
+  "get version" control frames (`1C 00 <seq> 00`) with seq 0, 1, 2… until one is answered with
+  the version (`41 …`) instead of an error; the next frame is that seq + 1.
 - `frame_ctrl`: `0x10` = more fragments follow; `0x04` set on device-to-phone frames.
   No encryption (`0x01`) and no checksum (`0x02`) needed. The G1 never asked for DH negotiation.
 - `len` is one byte, so payloads over 255 bytes must fragment. A fragment's `data` starts with
@@ -134,6 +139,8 @@ with no request needed (`device:status:request` gets no reply).
 - `areaTemperature` = five zones, tip first. `curTemperature` = the lowest (core) zone.
 - Docked probe collapses to `{probeColor, cookingState: "charged", cookingMode, setParams}`.
 - `cookingState` seen: `charged`, `cooking`. App constants also list `ready`, `resting`, `remove`.
+- Taking the probe out of the dock starts a Manual cook at the last target by itself [HW].
+- Reports start within about 200 ms of a successful `direct` trust [HW].
 
 ## 7. Commands
 

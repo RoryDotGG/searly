@@ -4,7 +4,7 @@ import * as SecureStore from "expo-secure-store";
 import { PermissionsAndroid, Platform, type EventSubscription } from "react-native";
 import BleManager, { BleState } from "react-native-ble-manager";
 
-import { frames, Reassembler } from "../protocol/blufi";
+import { CUSTOM, ERROR, frames, GET_VERSION, Reassembler, VERSION } from "../protocol/blufi";
 import { pack, unpack } from "../protocol/envelope";
 import { command, incoming, receiptError, trust, type Incoming, type Receipt } from "../protocol/messages";
 
@@ -13,27 +13,69 @@ const WRITE = "ff01";
 const NOTIFY = "ff02";
 const NAME_PREFIX = "TM-WT10";
 
+/** Something the user has to fix before the app can reach the G1. */
+export class SetupError extends Error {
+  constructor(
+    message: string,
+    readonly fix: "retry" | "settings",
+  ) {
+    super(message);
+  }
+}
+
+/** A receipt that is not a success, kept so callers can tell cmdError 11 from the rest. */
+export class ReceiptError extends Error {
+  constructor(readonly receipt: Receipt) {
+    super(receiptError(receipt));
+  }
+}
+
 /** Grant BLUETOOTH_SCAN and BLUETOOTH_CONNECT (Android 12+) or fine location (older). */
-export async function requestPermissions(): Promise<boolean> {
-  if (Platform.OS !== "android") return true;
+async function requestPermissions(): Promise<void> {
+  if (Platform.OS !== "android") return;
   const wanted =
     Platform.Version >= 31
       ? [PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN, PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT]
       : [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION];
   const result = await PermissionsAndroid.requestMultiple(wanted);
-  return wanted.every((p) => result[p] === PermissionsAndroid.RESULTS.GRANTED);
+  const states = wanted.map((p) => result[p]);
+  if (states.every((r) => r === PermissionsAndroid.RESULTS.GRANTED)) return;
+  if (states.includes(PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN)) {
+    throw new SetupError("Searly needs the Nearby devices permission. Allow it in Settings.", "settings");
+  }
+  throw new SetupError("Searly needs the Nearby devices permission to find the G1.", "retry");
 }
 
 let started: Promise<void> | null = null;
 
-/** Start the BLE manager once, and ask to turn Bluetooth on if it is off. */
-export async function ready(): Promise<void> {
+/**
+ * Permissions, then start the BLE manager once, then Bluetooth on. `prompt` asks the user to turn
+ * Bluetooth on; without it an off adapter is an error (no dialog spam while reconnecting).
+ */
+export async function ready(prompt: boolean): Promise<void> {
+  await requestPermissions();
   started ??= BleManager.start().catch((e: unknown) => {
     started = null; // let the next attempt retry
     throw e;
   });
   await started;
-  if ((await BleManager.checkState()) !== BleState.On) await BleManager.enableBluetooth();
+  if ((await BleManager.checkState()) === BleState.On) return;
+  if (prompt) {
+    try {
+      await BleManager.enableBluetooth();
+      return;
+    } catch {
+      // declined
+    }
+  }
+  throw new SetupError("Bluetooth is off.", "retry");
+}
+
+/** Runs `cb` each time the Bluetooth adapter turns on. */
+export function onBluetoothOn(cb: () => void): EventSubscription {
+  return BleManager.onDidUpdateState(({ state }) => {
+    if (state === BleState.On) cb();
+  });
 }
 
 /** Scan for the stored G1, or any G1 when there is none. Resolves with its peripheral id. */
@@ -88,6 +130,7 @@ export class G1Session {
   private waiting = new Map<string, Waiting>();
   private subs: EventSubscription[] = [];
   private open = true;
+  private probe: ((frameType: number) => void) | null = null;
 
   private constructor(
     readonly peripheralId: string,
@@ -112,6 +155,7 @@ export class G1Session {
       s.mtu = await BleManager.requestMTU(peripheralId, 512);
       s.chunk = Math.min(253, s.mtu - 3 - 6);
       await BleManager.startNotification(peripheralId, SERVICE, NOTIFY);
+      await s.syncSeq();
     } catch (e) {
       await s.close();
       throw e;
@@ -123,7 +167,7 @@ export class G1Session {
   /** Reconnect with a stored identity: no button press [HW]. */
   async trust(userId: string): Promise<void> {
     const r = await this.request("BT:apply:trust", trust(userId, "direct"), 10_000);
-    if (r.executeResult !== "success") throw new Error(receiptError(r));
+    if (r.executeResult !== "success") throw new ReceiptError(r);
   }
 
   /** First-time pairing. The probe must be docked and the user must press OK on the G1 [HW]. */
@@ -132,10 +176,10 @@ export class G1Session {
     const deviceId = randomDigits(18);
     this.deviceId = "";
     const r = await this.request("BT:apply:trust", trust(userId, "pair"), 35_000, pressOk);
-    if (r.executeResult !== "success") throw new Error(receiptError(r));
+    if (r.executeResult !== "success") throw new ReceiptError(r);
     this.deviceId = deviceId; // the G1 stores the deviceId from this envelope
     const c = await this.request("BT:Pair:Result", { result: "success" }, 10_000);
-    if (c.executeResult !== "success") throw new Error(receiptError(c));
+    if (c.executeResult !== "success") throw new ReceiptError(c);
     return { userId, deviceId };
   }
 
@@ -172,6 +216,30 @@ export class G1Session {
     await BleManager.disconnect(this.peripheralId).catch(() => undefined);
   }
 
+  /**
+   * Find the frame counter the G1 expects. It is 0 on a fresh link, but after a hard kill Android
+   * can hand the old link to the new process, and the G1 keeps counting from the old session [HW].
+   * A frame with the wrong counter gets an error frame and does not advance it, so probe with
+   * harmless "get version" frames until one is accepted. Runs before any other write.
+   */
+  private async syncSeq(): Promise<void> {
+    for (let seq = 0; seq < 256; seq++) {
+      const reply = new Promise<number>((resolve) => {
+        this.probe = resolve;
+        setTimeout(() => resolve(-1), 1_000); // no reply at all: assume accepted
+      });
+      await BleManager.write(this.peripheralId, SERVICE, WRITE, [GET_VERSION, 0, seq, 0], 4);
+      const frameType = await reply;
+      this.probe = null;
+      if (frameType !== ERROR) {
+        this.seq = seq + 1;
+        if (seq > 0) this.events.log(`G1 expected frame ${seq}; resynced`);
+        return;
+      }
+    }
+    throw new Error("Could not agree a frame counter with the G1");
+  }
+
   /** All writes share one queue so frames from two commands never interleave. */
   private write(payload: Uint8Array): Promise<void> {
     const next = this.writes.then(async () => {
@@ -191,6 +259,13 @@ export class G1Session {
       // Spec open question 2: does the G1 fragment to the negotiated MTU?
       this.largestNotify = value.length;
       this.events.log(`largest notification so far: ${value.length} bytes (MTU ${this.mtu})`);
+    }
+    const frameType = value[0] ?? 0;
+    if (this.probe && (frameType === ERROR || frameType === VERSION)) return this.probe(frameType);
+    if (frameType === VERSION) return;
+    if (frameType !== CUSTOM) {
+      const hex = Array.from(value, (b) => b.toString(16).padStart(2, "0")).join(" ");
+      this.events.log(`non-data frame: ${hex}`);
     }
     let msg: Incoming | null;
     try {
