@@ -160,8 +160,10 @@ needed (`device:status:request` gets no reply).
 | `BT:user:unbind` | `{}` | [APK] |
 
 `volume`: all four values give `success` and the next status report shows the new value [HW].
-The official app's picker offers only `high`/`low`/`mute` [APK]. `quiet` (used by the cloud
-models in ha-thermomaven) gets `failure`, `cmdError: 6`, and the volume does not change [HW].
+The official app's picker offers only `high`/`low`/`mute` [APK], and the G1's own menu only
+Loud/Quiet/Mute [HW]. `medium` has no menu entry and seems to sound the same as `high`.
+`quiet` (used by the cloud models in ha-thermomaven) gets `failure`, `cmdError: 6`, and the
+volume does not change [HW].
 
 Field semantics for cooking commands are documented from cloud captures in
 [kingchddg901/ha-thermomaven docs/PROTOCOL.md](https://github.com/kingchddg901/ha-thermomaven/blob/main/docs/PROTOCOL.md);
