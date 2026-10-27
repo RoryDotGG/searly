@@ -13,7 +13,7 @@ no Wi-Fi, no tracking, no app store. It is the groundwork for a small, fast, off
 |---|---|
 | Pair with a G1 (no account) | Works |
 | Reconnect without pressing a button | Works |
-| Live probe temperature, 5 zones, ambient, batteries (every 2 s) | Works |
+| Live probe temperature, 5 zones, ambient, batteries (every 2 s; 10 s when docked) | Works |
 | Start a Manual or Smart cook, change the target | Works |
 | Device settings (volume) | Works |
 | Stop or finish a cook over Bluetooth | The G1 ignores it while the probe is out; docking ends the cook |
@@ -26,11 +26,11 @@ protocol with a different model code, but are untested.
 
 | Path | What |
 |---|---|
-| `/` | The Android app (Expo / React Native). Planned in [docs/SPEC.md](docs/SPEC.md); so far pairing and a live screen that reconnects by itself |
+| `/` | The Android app (Expo / React Native): pair, live readings, start or adjust a cook, volume. See [docs/SPEC.md](docs/SPEC.md) |
 | `docs/PROTOCOL.md` | The reverse-engineered BLE protocol |
 | `experiments/python/` | Python reference client used to work out the protocol |
 
-## App (in progress)
+## App
 
 Needs Node 22+, Android Studio's SDK and an Android phone with Bluetooth (the emulator has none).
 

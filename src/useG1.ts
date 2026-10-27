@@ -29,8 +29,16 @@ export type Phase =
 
 export type G1 = ReturnType<typeof useG1>;
 
+interface ReportWaiter {
+  test(r: StatusReport): boolean;
+  done(error?: Error): void;
+}
+
 const RECONNECT_DELAYS_MS = [1_000, 2_000, 5_000, 10_000]; // then every 10 s
+// Three missed reports. The G1 reports every 2 s with a probe out, every 10 s when all are docked [HW].
 const STALE_MS = 6_000;
+const STALE_DOCKED_MS = 30_000;
+const CONFIRM_MS = 8_000; // a few report intervals
 const MAX_LOG = 200;
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -52,6 +60,7 @@ export function useG1() {
   const pending = useRef<number | null>(null); // the next reconnect attempt, if one is due
   const foreground = useRef(AppState.currentState === "active");
   const liveSince = useRef<number | null>(null); // set until the first report after going live
+  const waiters = useRef(new Set<ReportWaiter>());
 
   const setPhase = (p: Phase) => {
     phaseRef.current = p;
@@ -69,9 +78,10 @@ export function useG1() {
       const r = statusReport(m);
       if (!r) return write(JSON.stringify(m));
       if (liveSince.current !== null) {
-        write(`first report ${Date.now() - liveSince.current} ms after going live`);
+        write(`first report ${Date.now() - liveSince.current} ms after going live: ${JSON.stringify(m.cmdData)}`);
         liveSince.current = null;
       }
+      for (const w of waiters.current) if (w.test(r)) w.done();
       setReport(r);
       setReportAt(Date.now());
     },
@@ -172,6 +182,40 @@ export function useG1() {
     }
   }
 
+  /**
+   * Send a command and resolve once the receipt succeeds and a later status report shows the change.
+   * The receipt alone is not trusted: the G1 acknowledges some commands it then ignores [HW].
+   */
+  async function send(cmdType: string, cmdData: unknown, confirmed: (r: StatusReport) => boolean) {
+    const s = session.current;
+    if (!s || phaseRef.current.kind !== "live") throw new Error("Not connected to the G1");
+    let waiter: ReportWaiter | undefined;
+    const seen = new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => waiter?.done(new Error("The G1 accepted it, but its reports don't show the change")), CONFIRM_MS);
+      waiter = {
+        test: confirmed,
+        done: (error) => {
+          clearTimeout(timer);
+          waiters.current.delete(waiter!);
+          if (error) reject(error);
+          else resolve();
+        },
+      };
+      waiters.current.add(waiter);
+    });
+    seen.catch(() => undefined); // awaited below unless the request fails first
+    try {
+      const r = await s.request(cmdType, cmdData, 10_000);
+      if (r.executeResult !== "success") throw new ReceiptError(r);
+      write(`${cmdType} accepted; waiting for a report to confirm`);
+    } catch (e) {
+      waiter?.done(e instanceof Error ? e : new Error(message(e)));
+      throw e;
+    }
+    await seen;
+    write(`${cmdType} confirmed by a status report`);
+  }
+
   function retry() {
     const p = phaseRef.current;
     if (p.kind === "error" && p.fix === "settings") return void Linking.openSettings();
@@ -231,9 +275,10 @@ export function useG1() {
     report,
     /** ms since the last status report; stale after 6 s */
     silentFor,
-    stale: silentFor > STALE_MS,
+    stale: silentFor > (report?.probes.every((p) => p.curTemperature === undefined) ? STALE_DOCKED_MS : STALE_MS),
     log,
     pair: () => void pair(),
+    send,
     retry,
     forget: () => void forget(),
   };

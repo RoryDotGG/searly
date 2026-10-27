@@ -1,17 +1,31 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { loadUnit, saveUnit } from "../prefs";
 import { fromTenthsF, type Probe, type Unit } from "../protocol/messages";
 import type { G1 } from "../useG1";
+import CookModal from "./CookModal";
 import DebugLog from "./DebugLog";
-
-// °C / °F becomes a setting in SettingsModal (build step 5).
-const UNIT: Unit = "C";
+import SettingsModal from "./SettingsModal";
 
 export default function LiveScreen({ g1 }: { g1: G1 }) {
   const [showLog, setShowLog] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [cookFor, setCookFor] = useState<string | null>(null); // probeColor
+  const [unit, setUnit] = useState<Unit>("C");
   const { phase, report } = g1;
-  const dim = phase.kind !== "live" || g1.stale;
+  const live = phase.kind === "live";
+  const dim = !live || g1.stale;
+  const cookProbe = report?.probes.find((p) => p.probeColor === cookFor);
+
+  useEffect(() => {
+    loadUnit().then(setUnit, () => undefined);
+  }, []);
+
+  const changeUnit = (u: Unit) => {
+    setUnit(u);
+    void saveUnit(u);
+  };
 
   return (
     <View style={styles.screen}>
@@ -21,6 +35,7 @@ export default function LiveScreen({ g1 }: { g1: G1 }) {
           <Text style={[styles.connection, dim && styles.warn]}>{connection(g1)}</Text>
           {report ? <Text style={styles.muted}>G1 battery {report.batteryValue}%</Text> : null}
         </View>
+        <Button title="Settings" onPress={() => setShowSettings(true)} />
       </Pressable>
       {phase.kind === "error" ? (
         <View style={styles.banner}>
@@ -30,11 +45,25 @@ export default function LiveScreen({ g1 }: { g1: G1 }) {
       ) : null}
       <ScrollView contentContainerStyle={styles.cards}>
         {report ? (
-          report.probes.map((p) => <ProbeCard key={p.probeColor} probe={p} dim={dim} />)
+          report.probes.map((p) => (
+            <ProbeCard
+              key={p.probeColor}
+              probe={p}
+              unit={unit}
+              dim={dim}
+              onCook={live && !g1.stale ? () => setCookFor(p.probeColor) : undefined}
+            />
+          ))
         ) : (
           <Text style={styles.muted}>Waiting for the G1…</Text>
         )}
       </ScrollView>
+      {cookProbe && live ? (
+        <CookModal g1={g1} probe={cookProbe} unit={unit} onClose={() => setCookFor(null)} />
+      ) : null}
+      {showSettings ? (
+        <SettingsModal g1={g1} unit={unit} onUnit={changeUnit} onClose={() => setShowSettings(false)} />
+      ) : null}
       <DebugLog g1={g1} visible={showLog} onClose={() => setShowLog(false)} />
     </View>
   );
@@ -57,8 +86,10 @@ function connection(g1: G1): string {
   }
 }
 
-function ProbeCard({ probe: p, dim }: { probe: Probe; dim: boolean }) {
+function ProbeCard(props: { probe: Probe; unit: Unit; dim: boolean; onCook: (() => void) | undefined }) {
+  const { probe: p, unit, dim } = props;
   const docked = p.curTemperature === undefined;
+  const temp = (t: number | undefined) => (t === undefined ? "–" : `${fromTenthsF(t, unit).toFixed(1)} °${unit}`);
   return (
     <View style={[styles.card, dim && styles.dim]}>
       <View style={styles.row}>
@@ -66,41 +97,44 @@ function ProbeCard({ probe: p, dim }: { probe: Probe; dim: boolean }) {
         {p.batteryValue !== undefined ? <Text style={styles.muted}>Battery {p.batteryValue}%</Text> : null}
       </View>
       {docked ? (
-        <Text style={styles.docked}>Docked, charging</Text>
+        <>
+          <Text style={styles.docked}>Docked, charging</Text>
+          {/* The G1 acknowledges a start while docked but ignores it; undocking starts a cook [HW]. */}
+          <Text style={styles.muted}>Take the probe out of the dock to start a cook.</Text>
+        </>
       ) : (
         <>
           <Text style={styles.core}>{temp(p.curTemperature)}</Text>
           <Text style={styles.detail}>
             Ambient {temp(p.curAmbientTemperature)} · Target {temp(p.setParams[0]?.setTemperature)}
           </Text>
-          <Zones values={p.areaTemperature ?? []} />
+          <Zones values={p.areaTemperature ?? []} unit={unit} />
           <Text style={styles.detail}>
             {title(p.cookingState)} · {title(p.cookingMode)} · {clock(p.curCookSec)}
           </Text>
         </>
       )}
+      {props.onCook && !docked ? (
+        <Button title={p.cookingState === "cooking" ? "Change target" : "Start cook"} onPress={props.onCook} />
+      ) : null}
     </View>
   );
 }
 
 /** The five probe zones, tip first. */
-function Zones({ values }: { values: number[] }) {
+function Zones({ values, unit }: { values: number[]; unit: Unit }) {
   if (values.length === 0) return null;
   return (
     <View style={styles.zones}>
       <Text style={styles.zoneEnd}>tip</Text>
       {values.map((v, i) => (
         <Text key={i} style={styles.zone}>
-          {fromTenthsF(v, UNIT).toFixed(0)}°
+          {fromTenthsF(v, unit).toFixed(0)}°
         </Text>
       ))}
       <Text style={styles.zoneEnd}>handle</Text>
     </View>
   );
-}
-
-function temp(t: number | undefined): string {
-  return t === undefined ? "–" : `${fromTenthsF(t, UNIT).toFixed(1)} °${UNIT}`;
 }
 
 function clock(sec: number | undefined): string {

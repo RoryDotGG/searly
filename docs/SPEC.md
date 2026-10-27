@@ -1,8 +1,8 @@
 # Searly Android app: v1 spec
 
-Status: **in progress**. Built so far: `src/protocol`, `G1Session`, `useG1`, PairScreen and
-LiveScreen (build order steps 1 to 4).
-Everything else in this document is planned. Protocol facts come from [PROTOCOL.md](PROTOCOL.md) and the Python reference client in
+Status: **v1 built**. All five build steps are done and the hardware acceptance checklist passed
+on a Pixel 10 Pro XL (Android 17) and one G1 (firmware 25). The Scope table's "Later" column is
+still planned. Protocol facts come from [PROTOCOL.md](PROTOCOL.md) and the Python reference client in
 [experiments/python](../experiments/python); tags **[HW]** / **[APK]** keep their meaning from there.
 
 ## Goal
@@ -128,8 +128,9 @@ on the pair screen.
 
 ### Live data [HW]
 
-`WT10:status:report` arrives every 2 s unasked. Keep only the latest report in state. Mark the
-screen stale after 6 s without one. A docked probe has only `probeColor`, `cookingState`,
+`WT10:status:report` arrives unasked every 2 s with a probe out of the dock, and every 10 s when
+all probes are docked. Keep only the latest report in state. Mark the screen stale after three
+missed reports: 6 s, or 30 s when all probes are docked. A docked probe has only `probeColor`, `cookingState`,
 `cookingMode`, `setParams`; render it as "Docked, charging".
 
 ## Screens
@@ -142,7 +143,9 @@ screen stale after 6 s without one. A docked probe has only `probeColor`, `cooki
 - ambient (`curAmbientTemperature`), target (`setParams[0].setTemperature`)
 - the five `areaTemperature` zones as a small bar, tip first
 - cooking state, mode, elapsed `curCookSec` as `h:mm:ss`, probe battery
-- button: "Start cook" when docked or idle, "Change target" while cooking
+- button: "Change target" while cooking, "Start cook" when out of the dock and idle. A docked
+  probe gets no button, only "Take the probe out of the dock to start a cook": the G1 acknowledges
+  a start while docked but ignores it, and undocking starts a Manual cook at the last target [HW]
 
 **CookModal**: Manual / Smart toggle, target temperature stepper in the display unit, Start.
 
@@ -151,12 +154,16 @@ screen stale after 6 s without one. A docked probe has only `probeColor`, `cooki
   "dataImgUrl": ""}`.
 - Change target: same action with the **running** `cookUuid` and its `startClient`;
   `cookingData: null` when `startClient` is `device`.
-- Confirm by watching the next status report, not only the receipt.
+- Changing Manual / Smart while cooking is a new cook ("Start new cook": new `cookUuid`, timer
+  restarts). Keeping the mode changes the target of the running cook [HW].
+- Confirm by watching the next status report, not only the receipt: the modal stays open until a
+  report shows the new `cookUuid`, mode and target, or says the G1 did not apply it (8 s).
 - Target range: 30 to 100 °C (86 to 212 °F) until the official app's limits are read from the APK.
   This is an assumption.
 
 **SettingsModal**: volume (`high` / `medium` / `quiet` / `mute`) via `WT10:setting:modify`
-[HW]; °C / °F (local only); "Forget this G1" (deletes stored identity; does not unbind the device).
+[HW], confirmed by the report's `volume`; °C / °F (local only, kept in SecureStore; the G1's own
+screen keeps its unit); "Forget this G1" (deletes stored identity; does not unbind the device).
 
 ## Units
 
@@ -196,9 +203,21 @@ debug log screen behind a long press on the header for hardware testing.
    Done: paired, streamed reports and reconnected without a button on a Pixel 10 Pro XL (Android 17).
 4. ~~`useG1` state machine, LiveScreen.~~ Done on the Pixel: cold start, kill and reopen (8/8),
    Bluetooth off and on, background then foreground, out of range and back, probe docked and out.
-   Not verified: deny-then-grant permissions (this phone auto-granted the permission to the debug
-   build), to redo with the step 5 checklist.
-5. CookModal and SettingsModal, then the hardware acceptance checklist. About half a day.
+   Deny-then-grant permissions moved to step 5 (this phone auto-granted the permission to the
+   `adb install -g` debug build).
+5. ~~CookModal and SettingsModal, then the hardware acceptance checklist.~~ Done. Checklist, on the
+   Pixel with a fresh `adb install` (no `-g`):
+   1. Deny then grant: passed through the harder path, a permanent denial. "Open settings", allow
+      Nearby devices, return: pairing resumed by itself, no restart. Debug builds on Android 17
+      also prompt for `ACCESS_LOCAL_NETWORK` (Metro) before any app code runs.
+   2. Pair with the probe docked: live right after OK, first report 143 ms later.
+   3. Kill and reopen: live in about 4 s.
+   4. Undock: the G1 started Manual 60 °C itself. From the app, new Smart 60 °C then new Manual
+      60 °C: both confirmed by reports and on the G1's screen.
+   5. Change target to 65 °C: same cook, timer kept counting, G1 screen showed 65 °C.
+   6. Volume High then Mute: both confirmed by reports and applied on the G1.
+   7. Out of range and back: reconnected by itself in about 50 s (run in step 4; reconnect code
+      unchanged since).
 
 ## Open questions
 

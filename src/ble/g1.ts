@@ -188,7 +188,7 @@ export class G1Session {
     if (!this.open) throw new Error("Not connected");
     cmdSeqNo += 1;
     const cmd = command(cmdType, cmdData, {
-      cmdId: Crypto.randomUUID().replace(/-/g, ""),
+      cmdId: randomId(),
       cmdSeqNo,
       deviceId: this.deviceId,
       nowMs: Date.now(),
@@ -297,6 +297,11 @@ export class G1Session {
     this.rx.reset();
     this.events.disconnected(reason);
   }
+}
+
+/** 32 hex characters, the format of cmdId and cookUuid. */
+export function randomId(): string {
+  return Crypto.randomUUID().replace(/-/g, "");
 }
 
 /** n random decimal digits, first one non-zero (the G1's userId / deviceId format). */

@@ -11,8 +11,6 @@ export default function DebugLog({ g1, visible, onClose }: { g1: G1; visible: bo
       <View style={styles.screen}>
         <View style={styles.buttons}>
           <Button title="Close" onPress={onClose} />
-          {/* Moves to SettingsModal in build step 5. */}
-          {g1.paired ? <Button title="Forget this G1" color="#a33" onPress={g1.forget} /> : null}
         </View>
         <ScrollView
           style={styles.log}

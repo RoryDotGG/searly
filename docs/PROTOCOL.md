@@ -121,7 +121,8 @@ Untested: whether pairing a second user evicts the first, or the G1 keeps severa
 ## 6. Live data [HW]
 
 After a trusted `direct` session starts, the G1 pushes `WT10:status:report` every **2.0 s**
-with no request needed (`device:status:request` gets no reply).
+while a probe is out of the dock, and every **10 s** when all probes are docked, with no request
+needed (`device:status:request` gets no reply).
 
 ```json
 {"globalStatus": "online", "batteryStatus": "normal", "batteryValue": 83, "wifiRssi": -35,
@@ -176,6 +177,7 @@ All via `WT10:cooking:action`, probe out of the dock. Tested with a manual cook.
 | Change target | `1` with the **running** `cookUuid` and its `startClient`; `cookingData: null` if `startClient` is `device` | Applied in about 0.1 s. Same cook, timer keeps counting |
 | Start new cook | `1` with a **new** `cookUuid` | Replaces the running cook. Timer resets to 0, `startClient` becomes ours |
 | Stop | `2` + `cookUuid` | Receipt `success` but **no change**: still `cooking` |
+| Start while docked | `1` with a new `cookUuid` | Receipt `success` but **no change**: still `charged` |
 | Finish | `5` + `cookUuid` | `failure`, `cmdError: 4`; still `cooking` |
 | Resting | `4` + `cookUuid` | Not tested. Only valid with a rest target [APK] |
 
