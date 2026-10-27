@@ -4,6 +4,7 @@ import * as SecureStore from "expo-secure-store";
 import { PermissionsAndroid, Platform, type EventSubscription } from "react-native";
 import BleManager, { BleState } from "react-native-ble-manager";
 
+import { COMPANY, parseAdvert, type Advert } from "../protocol/advert";
 import { CUSTOM, ERROR, frames, GET_VERSION, Reassembler, VERSION } from "../protocol/blufi";
 import { pack, unpack } from "../protocol/envelope";
 import { command, incoming, receiptError, trust, type Incoming, type Receipt } from "../protocol/messages";
@@ -105,6 +106,34 @@ export function find(peripheralId?: string, seconds = 20): Promise<{ id: string;
       reject(e instanceof Error ? e : new Error(String(e)));
     });
   });
+}
+
+const COMPANY_KEY = COMPANY.toString(16).padStart(4, "0"); // how Android keys manufacturer data
+
+/**
+ * Scan until stopped, passing on the advertised state each time the G1 (the stored one, or any)
+ * is seen. Android re-reports a device on every advert. Resolves with the stop once scanning.
+ */
+export async function watchAdverts(
+  peripheralId: string | undefined,
+  onAdvert: (a: Advert) => void,
+): Promise<() => Promise<void>> {
+  const sub = BleManager.onDiscoverPeripheral((p) => {
+    const name = p.advertising.localName ?? p.name ?? "";
+    if (peripheralId ? p.id !== peripheralId : !name.startsWith(NAME_PREFIX)) return;
+    const a = parseAdvert(p.advertising.manufacturerData?.[COMPANY_KEY]?.bytes ?? []);
+    if (a) onAdvert(a);
+  });
+  try {
+    await BleManager.scan({ serviceUUIDs: [SERVICE], seconds: 0 });
+  } catch (e) {
+    sub.remove();
+    throw e;
+  }
+  return async () => {
+    sub.remove();
+    await BleManager.stopScan();
+  };
 }
 
 /** Debug log direction: sent, received, Searly itself, or an error. */

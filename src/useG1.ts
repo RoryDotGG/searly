@@ -16,7 +16,9 @@ import {
   type Identity,
   type LogDir,
   type SessionEvents,
+  watchAdverts,
 } from "./ble/g1";
+import { allDocked, type Advert } from "./protocol/advert";
 import { statusReport, type StatusReport } from "./protocol/messages";
 
 /** Why pairing did not finish, in the words the pair screen uses. */
@@ -60,6 +62,7 @@ export const RECONNECT_DELAYS_MS = [1_000, 2_000, 5_000, 10_000]; // then every 
 const STALE_MS = 6_000;
 const STALE_DOCKED_MS = 30_000;
 const CONFIRM_MS = 8_000; // a few report intervals
+const ADVERT_STALE_MS = 10_000; // no advert this long: the G1 is off or out of range
 const MAX_LOG = 500;
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -79,6 +82,7 @@ export function useG1() {
   const [beat, setBeat] = useState(0);
   const [now, setNow] = useState(Date.now);
   const [log, setLog] = useState<LogEntry[]>([]);
+  const [advert, setAdvert] = useState<Advert | null>(null);
 
   const phaseRef = useRef(phase);
   const identity = useRef<Identity | null>(null);
@@ -91,6 +95,7 @@ export function useG1() {
   const waiters = useRef(new Set<ReportWaiter>());
   // The core when each cook began, from the first report seen for its cookUuid (tenths of °F).
   const cookStarts = useRef(new Map<string, number>());
+  const unwatch = useRef<(() => Promise<void>) | null>(null); // the dock watch, while one runs
 
   const setPhase = (p: Phase) => {
     phaseRef.current = p;
@@ -141,8 +146,41 @@ export function useG1() {
     },
   });
 
+  /**
+   * Watch the advertised dock state while pairing step 1 is on screen. Returns its stop. Pairing
+   * awaits the stop before scanning, so the two scans never overlap.
+   */
+  function watchDock() {
+    let ended = false;
+    let expiry: ReturnType<typeof setTimeout> | undefined;
+    let last = "";
+    const seen = (a: Advert) => {
+      if (ended) return;
+      const state = a.pairing ? "another phone is pairing" : allDocked(a) ? "docked" : `out (${a.probes[0]})`;
+      if (state !== last) write(`advert: ${(last = state)}`);
+      setAdvert(a);
+      clearTimeout(expiry);
+      expiry = setTimeout(() => setAdvert(null), ADVERT_STALE_MS);
+    };
+    // No Bluetooth prompt: step 1 works without it, and Start pairing asks.
+    const started = ready(false).then(() => watchAdverts(identity.current?.peripheralId, seen));
+    started.catch((e: unknown) => write(`not watching the dock: ${message(e)}`));
+    const stop = async () => {
+      if (ended) return;
+      ended = true;
+      clearTimeout(expiry);
+      setAdvert(null);
+      if (unwatch.current === stop) unwatch.current = null;
+      const end = await started.catch(() => undefined);
+      await end?.();
+    };
+    unwatch.current = stop;
+    return () => void stop();
+  }
+
   /** Abandon whatever is running and close the connection. */
   async function drop() {
+    await unwatch.current?.();
     flow.current += 1;
     clearTimeout(timer.current);
     pending.current = null;
@@ -385,6 +423,9 @@ export function useG1() {
     /** The core when this cook began, in tenths of °F, from the first report seen for it. */
     cookStart: (cookUuid: string | undefined) => (cookUuid ? cookStarts.current.get(cookUuid) : undefined),
     log,
+    /** The G1's advertised state while step 1 watches for it; null when not seen lately. */
+    advert,
+    watchDock,
     pair: () => void pair(),
     cancelPair,
     send,

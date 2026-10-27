@@ -1,6 +1,8 @@
 // Welcome, then pairing steps 1 and 2, then Paired.
+import { useEffect } from "react";
 import { Pressable, Text, View } from "react-native";
 
+import { allDocked, type Advert } from "../protocol/advert";
 import type { PairFailure } from "../useG1";
 import { Button, Centered, IconButton, Spinner } from "../ui/controls";
 import DeviceG1 from "../ui/DeviceG1";
@@ -10,7 +12,7 @@ import { Callout, Caption, Disc, InlineNote, ListGroup, ListRow, Screen, Well, W
 import { Radar } from "./RecoveryScreens";
 import { useNow } from "../ui/motion";
 import { Notice } from "../ui/status";
-import { font, radius, type, useTheme } from "../ui/theme";
+import { font, radius, space, type, useTheme } from "../ui/theme";
 
 const PAIR_TIMEOUT_S = 35; // the G1's own timeout for the OK key
 
@@ -65,15 +67,22 @@ const FAILURE: Record<PairFailure, string> = {
 
 /**
  * Step 1: the drawn G1 shows what to look for, and the ownership warning comes before anything
- * happens. A failed attempt replaces the warning with the reason.
+ * happens. A failed attempt replaces the warning with the reason. While on screen it watches the
+ * G1's adverts, so it says live whether the probe is docked and holds Start until it is. Without
+ * an advert (no permission yet, Bluetooth off, out of range) it just gives the instruction.
  */
 export function Dock(props: {
   failure: PairFailure | null;
+  advert: Advert | null;
+  onWatch: () => () => void;
   onStart: () => void;
   onCancel: () => void;
   onDebug: () => void;
 }) {
   const t = useTheme();
+  useEffect(() => props.onWatch(), []);
+  const a = props.advert;
+  const state = !a ? null : a.pairing ? "busy" : allDocked(a) ? "docked" : "out";
   return (
     <Screen
       title="Pair a G1"
@@ -81,7 +90,7 @@ export function Dock(props: {
       onTitleLongPress={props.onDebug}
       actions={<IconButton icon="close" label="Cancel pairing" onPress={props.onCancel} />}
       footer={
-        <Button size="lg" block onPress={props.onStart}>
+        <Button size="lg" block disabled={state === "out" || state === "busy"} onPress={props.onStart}>
           Start pairing
         </Button>
       }
@@ -106,12 +115,21 @@ export function Dock(props: {
           Screen shows OFF
         </Callout>
       </Well>
-      <Text accessibilityRole="header" style={[type.title, { color: t.ink }]}>
-        Put the probe in the dock
-      </Text>
-      <Text style={[type.body, { color: t.inkMuted }]}>
-        Slide the probe into the G1 until it sits flush. The G1’s screen shows OFF while it’s docked.
-      </Text>
+      <View accessibilityLiveRegion="polite" style={{ gap: space[4] }}>
+        <Text accessibilityRole="header" style={[type.title, { color: t.ink }]}>
+          {state === "docked" ? "Probe docked" : "Put the probe in the dock"}
+        </Text>
+        <Text style={[type.body, { color: t.inkMuted }]}>
+          {state === "docked"
+            ? "Your G1 says the probe is in its dock. Start pairing when you’re ready."
+            : "Slide the probe into the G1 until it sits flush. The G1’s screen shows OFF while it’s docked."}
+        </Text>
+        {state === "out" || state === "busy" ? (
+          <InlineNote lead={<Icon name="alert" size={16} color={t.warn} />}>
+            {state === "out" ? "The probe is out of the dock" : "Another phone is pairing with this G1"}
+          </InlineNote>
+        ) : null}
+      </View>
       {props.failure ? (
         <Notice tone="danger" title="Pairing didn’t finish">
           {FAILURE[props.failure]}
@@ -125,10 +143,7 @@ export function Dock(props: {
   );
 }
 
-/**
- * Between steps 1 and 2: Searly scans for the G1, connects and asks it to trust this phone. It
- * cannot tell yet whether the probe is docked, so it only says what it is doing.
- */
+/** Between steps 1 and 2: Searly scans for the G1, connects and asks it to trust this phone. */
 export function PairSearching(props: { found: string | null; onCancel: () => void; onDebug: () => void }) {
   const t = useTheme();
   return (

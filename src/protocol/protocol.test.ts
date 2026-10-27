@@ -2,6 +2,7 @@
 // `uv run experiments/python/g1.py fixtures > src/protocol/fixtures.json`.
 import { describe, expect, test } from "vitest";
 
+import { allDocked, parseAdvert } from "./advert";
 import { frames, Reassembler } from "./blufi";
 import { crc16 } from "./crc";
 import { pack, unpack } from "./envelope";
@@ -134,4 +135,29 @@ test("cook targets are whole °F, as the G1 keeps them", () => {
   expect(targetTenthsF(72, "C")).toBe(1620); // 161.6 °F; the G1 stored 1616 as 1610 [HW]
   expect(targetTenthsF(70, "C")).toBe(1580);
   expect(targetTenthsF(149, "F")).toBe(1490);
+});
+
+describe("advertised dock state, from real G1 adverts [HW]", () => {
+  // Manufacturer data after the 0x5707 key, as g1.py scan printed it.
+  const advert = (tail: string) => parseAdvert(hex(`5441304344333141303830434532434e41${tail}`));
+
+  test("docked", () => {
+    expect(advert("00000302000900")).toEqual({ pairing: false, probes: [9, 0, 0, 0] });
+    expect(allDocked(advert("00000302000900")!)).toBe(true);
+  });
+
+  test("out: just removed, and cooking", () => {
+    expect(allDocked(advert("00000302000800")!)).toBe(false);
+    expect(allDocked(advert("00000302000200")!)).toBe(false);
+  });
+
+  test("another phone mid-pairing", () => {
+    expect(advert("00000343000900")?.pairing).toBe(true);
+  });
+
+  test("short or missing data", () => {
+    expect(advert("0000030200")).toBeNull(); // 22 bytes: no probe 1 byte
+    expect(parseAdvert([])).toBeNull();
+    expect(allDocked({ pairing: false, probes: [0, 0, 0, 0] })).toBe(false);
+  });
 });
