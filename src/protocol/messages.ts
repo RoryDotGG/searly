@@ -75,6 +75,18 @@ export function command(
   };
 }
 
+/** Plain-language reason for a receipt that is not a success. */
+export function receiptError(r: Receipt): string {
+  switch (r.cmdError) {
+    case 11:
+      return "The G1 refused: not the owner, declined, timed out, or the probe is not in the dock";
+    case 4:
+      return "Not valid in this cook state";
+    default:
+      return `The G1 replied ${r.executeResult} (cmdError ${r.cmdError ?? "none"})`;
+  }
+}
+
 /** Narrow a decoded payload to a message, or null if it is not one. */
 export function incoming(x: unknown): Incoming | null {
   if (typeof x !== "object" || x === null) return null;

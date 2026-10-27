@@ -6,7 +6,7 @@ import { frames, Reassembler } from "./blufi";
 import { crc16 } from "./crc";
 import { pack, unpack } from "./envelope";
 import fixtures from "./fixtures.json";
-import { command, fromTenthsF, incoming, setCook, toTenthsF } from "./messages";
+import { command, fromTenthsF, incoming, receiptError, setCook, toTenthsF } from "./messages";
 
 const hex = (s: string) => new Uint8Array(s.match(/../g)?.map((b) => parseInt(b, 16)) ?? []);
 const toHex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
@@ -95,6 +95,13 @@ describe("bad input is rejected", () => {
     expect(incoming(null)).toBeNull();
     expect(incoming({ cmdType: 1, cmdId: "x" })).toBeNull();
   });
+});
+
+test("receiptError names the documented codes", () => {
+  const r = { cmdId: "x", cmdType: "x", executeResult: "failure" };
+  expect(receiptError({ ...r, cmdError: 11 })).toMatch(/refused/);
+  expect(receiptError({ ...r, cmdError: 4 })).toMatch(/cook state/);
+  expect(receiptError(r)).toMatch(/failure \(cmdError none\)/);
 });
 
 test("setCook: cookingData is null only for cooks started on the G1", () => {

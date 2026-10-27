@@ -23,7 +23,7 @@ The G1 handset has a screen and four buttons: SET (top left), OK (bottom left), 
 | Advertised service | `0xFFFF` |
 | Manufacturer data | company `0x5707`, ASCII `TA` + 12 hex chars (BT MAC) + `CNA`, then 7 bytes |
 | GATT | service `0000ffff-…`: `ff01` write (with response), `ff02` notify |
-| MTU (macOS) | 500 |
+| MTU | 500 (macOS; Android 17 on a Pixel 10 Pro XL). Notifications are at most 250 bytes |
 
 This is stock Espressif **BluFi**, reused as a message pipe.
 
@@ -95,6 +95,7 @@ command seen to get a receipt while untrusted.
    Any 18-digit string works offline. Receipt `success`; `userId` now shows the new owner.
 
 Skipping step 5 gives a trusted session that never streams data, and trust is lost on disconnect.
+After step 5, status reports start in the same session with no `direct` trust needed [HW].
 
 ### Every later connection (`mode: "direct"`)
 

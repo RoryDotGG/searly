@@ -26,7 +26,7 @@ protocol with a different model code, but are untested.
 
 | Path | What |
 |---|---|
-| `/` | The Android app (Expo / React Native). Planned in [docs/SPEC.md](docs/SPEC.md); only the scaffold exists so far |
+| `/` | The Android app (Expo / React Native). Planned in [docs/SPEC.md](docs/SPEC.md); so far a debug screen that pairs, reconnects and shows live reports |
 | `docs/PROTOCOL.md` | The reverse-engineered BLE protocol |
 | `experiments/python/` | Python reference client used to work out the protocol |
 

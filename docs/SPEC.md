@@ -1,6 +1,7 @@
 # Searly Android app: v1 spec
 
-Status: **in progress**. Built so far: the Expo scaffold and `src/protocol` (build order step 2).
+Status: **in progress**. Built so far: `src/protocol`, `G1Session` and a debug screen (build order
+steps 1 to 3).
 Everything else in this document is planned. Protocol facts come from [PROTOCOL.md](PROTOCOL.md) and the Python reference client in
 [experiments/python](../experiments/python); tags **[HW]** / **[APK]** keep their meaning from there.
 
@@ -83,9 +84,9 @@ src/screens/                      PairScreen, LiveScreen, CookModal, SettingsMod
 
 All writes go through one promise queue so frames from two commands never interleave.
 
-Unknown [HW]: whether the G1 fragments its own notifications to the negotiated MTU. Log notify
-lengths during the first hardware run; if the G1 assumes MTU 500 and Android negotiates less,
-notifications will truncate and `unpack` will fail its CRC.
+[HW]: the G1's notifications are at most 250 bytes, so any MTU of 253 or more is safe. Whether it
+fragments to a smaller MTU is untested (open question 2). If it does not, the Reassembler throws
+"truncated notification" and the debug log shows it.
 
 ### Permissions
 
@@ -186,15 +187,17 @@ debug log screen behind a long press on the header for hardware testing.
 
 1. ~~Verify raw-block zstd on hardware with `g1.py`.~~ Done: the G1 accepts it.
 2. ~~`src/protocol` + vitest fixtures.~~ Done: `npm test`, fixtures from `g1.py fixtures`.
-3. Add BLE deps and plugin config, `G1Session`, a debug screen that pairs and prints reports.
-   First hardware milestone. About half a day, mostly MTU and permission edge cases.
+3. ~~Add BLE deps and plugin config, `G1Session`, a debug screen that pairs and prints reports.~~
+   Done: paired, streamed reports and reconnected without a button on a Pixel 10 Pro XL (Android 17).
 4. `useG1` state machine, LiveScreen. About half a day.
 5. CookModal and SettingsModal, then the hardware acceptance checklist. About half a day.
 
 ## Open questions
 
 1. ~~Does the G1 accept raw-block zstd?~~ Yes [HW].
-2. Does the G1 fragment notifications to the negotiated MTU?
+2. Does the G1 fragment notifications to the negotiated MTU? Its notifications are at most 250
+   bytes, which fits any MTU of 253 or more. Android 14+ always negotiates 517 on the first
+   request (the G1 answers 500), so only Android 12 and 13 phones can hit a smaller MTU. Untested.
 3. Target temperature limits in the official app.
 4. Can the phone and `g1.py` share one identity? `direct` mode only checks `userId` and the stored
    `deviceId`, so it should work, which would allow an "import identity" option later. Untested.
