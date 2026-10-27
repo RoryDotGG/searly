@@ -1,7 +1,8 @@
 # Searly Android app: v1 spec
 
-Status: **planned**. Nothing in this document is built yet except the empty Expo scaffold at the
-repo root. Protocol facts come from [PROTOCOL.md](PROTOCOL.md) and the Python reference client in
+Status: **v1 built**. All five build steps are done and the hardware acceptance checklist passed
+on a Pixel 10 Pro XL (Android 17) and one G1 (firmware 25). The Scope table's "Later" column is
+still planned. Protocol facts come from [PROTOCOL.md](PROTOCOL.md) and the Python reference client in
 [experiments/python](../experiments/python); tags **[HW]** / **[APK]** keep their meaning from there.
 
 ## Goal
@@ -34,7 +35,7 @@ ignores it while the probe is out [HW]; the UI says "dock the probe to end the c
 | Framework | Expo SDK 58 (RN 0.88, new architecture), development build | Already scaffolded; config plugins keep `android/` generated |
 | BLE | `react-native-ble-manager` 12.x + its config plugin | Actively maintained, has an Expo plugin, byte arrays in and out (no base64) |
 | zstd decode | `fzstd` (pure JS) | The G1 sends real zstd; Hermes has no zstd |
-| zstd encode | ~10 lines in `src/protocol`, uncompressed "raw block" frames | Commands are under 1 KB, so compression is pointless; avoids a native module |
+| zstd encode | ~10 lines in `src/protocol`, uncompressed "raw block" frames [HW] | Commands are under 1 KB, so compression is pointless; avoids a native module |
 | Identity storage | `expo-secure-store` | Holds `userId`, `deviceId`, peripheral id. Anyone with these can drive the G1 |
 | Random ids | `expo-crypto` | `cmdId`, `cookUuid`, 18-digit `userId` / `deviceId` |
 | Navigation | None. One root component switches on connection state; cook and settings are RN `Modal`s | Two screens do not need a router |
@@ -43,13 +44,12 @@ ignores it while the probe is out [HW]; the UI says "dock the probe to end the c
 Expo Go cannot load the BLE module. Run with `npx expo run:android` (local dev build) or an EAS
 development build.
 
-### Raw-block zstd: verify first
+### Raw-block zstd [HW]
 
 The encoder writes a valid zstd frame with one uncompressed block:
 `28 B5 2F FD | A0 | content size u32 LE | (len << 3 | 1) u24 LE | json`. libzstd decodes this
-(checked against `zstandard` 0.25.0). The G1's ESP32 decoder has not seen it yet. **Before any app
-code**, switch `pack()` in `g1.py` to raw blocks behind a flag and run `send WT10:setting:modify
-'{"volume":"mute"}'` on hardware. If the G1 rejects it, fall back to a native zstd module.
+(checked against `zstandard` 0.25.0), and so does the G1: `g1.py --raw` sent `BT:apply:trust` and
+`WT10:setting:modify '{"volume":"mute"}'` as raw blocks and both returned success.
 
 ## Architecture
 
@@ -79,14 +79,15 @@ src/screens/                      PairScreen, LiveScreen, CookModal, SettingsMod
 | Connect | `connect(id)` then `retrieveServices(id)` | |
 | MTU | `requestMTU(id, 512)` | **Required.** Android starts at 23, frames are up to 259 bytes. Write chunk = `min(253, mtu - 3 - 6)` |
 | Notify | `startNotification(id, "ffff", "ff02")`, `onDidUpdateValueForCharacteristic` | Feed bytes to the Reassembler |
+| Sync | "get version" control frames with seq 0, 1, 2… until one is not answered with a BluFi error | **Required.** The G1 enforces `seq`, and after a hard kill Android can reuse the old link, so the G1 still expects the old count [HW]. One round trip on a fresh link |
 | Write | `write(id, "ffff", "ff01", frame, frame.length)` once per frame, awaited in order | **Pass `maxByteSize`**: it defaults to 20 and the library would split frames itself |
-| Disconnect | `onDisconnectPeripheral` | Reset `seq` and the Reassembler; keep `cmdSeqNo` |
+| Disconnect | `onDisconnectPeripheral` | Reset the Reassembler; keep `cmdSeqNo`. `seq` comes from Sync |
 
 All writes go through one promise queue so frames from two commands never interleave.
 
-Unknown [HW]: whether the G1 fragments its own notifications to the negotiated MTU. Log notify
-lengths during the first hardware run; if the G1 assumes MTU 500 and Android negotiates less,
-notifications will truncate and `unpack` will fail its CRC.
+[HW]: the G1's notifications are at most 250 bytes, so any MTU of 253 or more is safe. Whether it
+fragments to a smaller MTU is untested (open question 2). If it does not, the Reassembler throws
+"truncated notification" and the debug log shows it.
 
 ### Permissions
 
@@ -103,10 +104,14 @@ no-identity ──pair──▶ pairing ──success──▶ live
 identity ──▶ scanning ▶ connecting ▶ trusting ──success──▶ live
                                        └── cmdError 11 ──▶ needs-repair (keep identity, offer re-pair)
 live ──disconnect──▶ reconnecting (1, 2, 5, 10 s, then every 10 s) ──▶ scanning
-any step ──BT off / permission denied / scan timeout──▶ error (reason + retry)
+any connect failure with an identity (not found, no reply, dropped) ──▶ reconnecting
+any step ──BT off / permission denied──▶ error (reason + retry)
 ```
 
-Reconnect only while the app is in the foreground in v1.
+Reconnect only while the app is in the foreground in v1: a retry that falls due in the background
+waits for the app to return. An error retries by itself when Bluetooth turns on, or when the app
+returns from Settings after a permanent permission denial. Without an identity, pairing failures
+are errors with a retry button.
 
 ### Pairing [HW]
 
@@ -123,8 +128,9 @@ on the pair screen.
 
 ### Live data [HW]
 
-`WT10:status:report` arrives every 2 s unasked. Keep only the latest report in state. Mark the
-screen stale after 6 s without one. A docked probe has only `probeColor`, `cookingState`,
+`WT10:status:report` arrives unasked every 2 s with a probe out of the dock, and every 10 s when
+all probes are docked. Keep only the latest report in state. Mark the screen stale after three
+missed reports: 6 s, or 30 s when all probes are docked. A docked probe has only `probeColor`, `cookingState`,
 `cookingMode`, `setParams`; render it as "Docked, charging".
 
 ## Screens
@@ -137,7 +143,9 @@ screen stale after 6 s without one. A docked probe has only `probeColor`, `cooki
 - ambient (`curAmbientTemperature`), target (`setParams[0].setTemperature`)
 - the five `areaTemperature` zones as a small bar, tip first
 - cooking state, mode, elapsed `curCookSec` as `h:mm:ss`, probe battery
-- button: "Start cook" when docked or idle, "Change target" while cooking
+- button: "Change target" while cooking, "Start cook" when out of the dock and idle. A docked
+  probe gets no button, only "Take the probe out of the dock to start a cook": the G1 acknowledges
+  a start while docked but ignores it, and undocking starts a Manual cook at the last target [HW]
 
 **CookModal**: Manual / Smart toggle, target temperature stepper in the display unit, Start.
 
@@ -146,12 +154,16 @@ screen stale after 6 s without one. A docked probe has only `probeColor`, `cooki
   "dataImgUrl": ""}`.
 - Change target: same action with the **running** `cookUuid` and its `startClient`;
   `cookingData: null` when `startClient` is `device`.
-- Confirm by watching the next status report, not only the receipt.
+- Changing Manual / Smart while cooking is a new cook ("Start new cook": new `cookUuid`, timer
+  restarts). Keeping the mode changes the target of the running cook [HW].
+- Confirm by watching the next status report, not only the receipt: the modal stays open until a
+  report shows the new `cookUuid`, mode and target, or says the G1 did not apply it (8 s).
 - Target range: 30 to 100 °C (86 to 212 °F) until the official app's limits are read from the APK.
   This is an assumption.
 
 **SettingsModal**: volume (`high` / `medium` / `quiet` / `mute`) via `WT10:setting:modify`
-[HW]; °C / °F (local only); "Forget this G1" (deletes stored identity; does not unbind the device).
+[HW], confirmed by the report's `volume`; °C / °F (local only, kept in SecureStore; the G1's own
+screen keeps its unit); "Forget this G1" (deletes stored identity; does not unbind the device).
 
 ## Units
 
@@ -185,17 +197,34 @@ debug log screen behind a long press on the header for hardware testing.
 
 ## Build order
 
-1. Verify raw-block zstd on hardware with `g1.py` (above). About 15 minutes.
-2. `src/protocol` + vitest fixtures. About 2 hours.
-3. Add BLE deps and plugin config, `G1Session`, a debug screen that pairs and prints reports.
-   First hardware milestone. About half a day, mostly MTU and permission edge cases.
-4. `useG1` state machine, LiveScreen. About half a day.
-5. CookModal and SettingsModal, then the hardware acceptance checklist. About half a day.
+1. ~~Verify raw-block zstd on hardware with `g1.py`.~~ Done: the G1 accepts it.
+2. ~~`src/protocol` + vitest fixtures.~~ Done: `npm test`, fixtures from `g1.py fixtures`.
+3. ~~Add BLE deps and plugin config, `G1Session`, a debug screen that pairs and prints reports.~~
+   Done: paired, streamed reports and reconnected without a button on a Pixel 10 Pro XL (Android 17).
+4. ~~`useG1` state machine, LiveScreen.~~ Done on the Pixel: cold start, kill and reopen (8/8),
+   Bluetooth off and on, background then foreground, out of range and back, probe docked and out.
+   Deny-then-grant permissions moved to step 5 (this phone auto-granted the permission to the
+   `adb install -g` debug build).
+5. ~~CookModal and SettingsModal, then the hardware acceptance checklist.~~ Done. Checklist, on the
+   Pixel with a fresh `adb install` (no `-g`):
+   1. Deny then grant: passed through the harder path, a permanent denial. "Open settings", allow
+      Nearby devices, return: pairing resumed by itself, no restart. Debug builds on Android 17
+      also prompt for `ACCESS_LOCAL_NETWORK` (Metro) before any app code runs.
+   2. Pair with the probe docked: live right after OK, first report 143 ms later.
+   3. Kill and reopen: live in about 4 s.
+   4. Undock: the G1 started Manual 60 °C itself. From the app, new Smart 60 °C then new Manual
+      60 °C: both confirmed by reports and on the G1's screen.
+   5. Change target to 65 °C: same cook, timer kept counting, G1 screen showed 65 °C.
+   6. Volume High then Mute: both confirmed by reports and applied on the G1.
+   7. Out of range and back: reconnected by itself in about 50 s (run in step 4; reconnect code
+      unchanged since).
 
 ## Open questions
 
-1. Does the G1 accept raw-block zstd? (step 1 answers it)
-2. Does the G1 fragment notifications to the negotiated MTU?
+1. ~~Does the G1 accept raw-block zstd?~~ Yes [HW].
+2. Does the G1 fragment notifications to the negotiated MTU? Its notifications are at most 250
+   bytes, which fits any MTU of 253 or more. Android 14+ always negotiates 517 on the first
+   request (the G1 answers 500), so only Android 12 and 13 phones can hit a smaller MTU. Untested.
 3. Target temperature limits in the official app.
 4. Can the phone and `g1.py` share one identity? `direct` mode only checks `userId` and the stored
    `deviceId`, so it should work, which would allow an "import identity" option later. Untested.

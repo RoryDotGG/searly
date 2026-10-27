@@ -23,7 +23,7 @@ The G1 handset has a screen and four buttons: SET (top left), OK (bottom left), 
 | Advertised service | `0xFFFF` |
 | Manufacturer data | company `0x5707`, ASCII `TA` + 12 hex chars (BT MAC) + `CNA`, then 7 bytes |
 | GATT | service `0000ffff-…`: `ff01` write (with response), `ff02` notify |
-| MTU (macOS) | 500 |
+| MTU | 500 (macOS; Android 17 on a Pixel 10 Pro XL). Notifications are at most 250 bytes |
 
 This is stock Espressif **BluFi**, reused as a message pipe.
 
@@ -34,7 +34,12 @@ This is stock Espressif **BluFi**, reused as a message pipe.
 ```
 
 - Only one frame type is used: `type = 0x4D` (data frame, subtype 19 "custom data").
-- `seq` counts from 0 per direction per connection; the device does not appear to enforce it.
+- `seq` counts from 0 per direction per link. The G1 **enforces** the phone-to-G1 count [HW]: a
+  frame with the wrong `seq` is answered with an error frame `49 04 <seq> 01 00` (data subtype 18,
+  error 0 = sequence error) and the count does not advance. Android can hand a hard-killed app's
+  link to the next process, so the G1 keeps counting from the old session. Recover by sending
+  "get version" control frames (`1C 00 <seq> 00`) with seq 0, 1, 2… until one is answered with
+  the version (`41 …`) instead of an error; the next frame is that seq + 1.
 - `frame_ctrl`: `0x10` = more fragments follow; `0x04` set on device-to-phone frames.
   No encryption (`0x01`) and no checksum (`0x02`) needed. The G1 never asked for DH negotiation.
 - `len` is one byte, so payloads over 255 bytes must fragment. A fragment's `data` starts with
@@ -51,6 +56,10 @@ crc_b = CRC-16/XMODEM over the uncompressed JSON
 ```
 
 Both CRCs verified on every received frame (0 failures over ~60 messages).
+
+The G1 also accepts a zstd frame holding one uncompressed ("raw") block, so a sender needs no
+zstd compressor: `28 B5 2F FD | A0 | content size u32 | (len << 3 | 1) u24 | json` (LE). Checked
+with `g1.py --raw`: `BT:apply:trust` (direct) and `WT10:setting:modify` both returned success.
 
 ## 4. JSON messages [HW]
 
@@ -91,6 +100,7 @@ command seen to get a receipt while untrusted.
    Any 18-digit string works offline. Receipt `success`; `userId` now shows the new owner.
 
 Skipping step 5 gives a trusted session that never streams data, and trust is lost on disconnect.
+After step 5, status reports start in the same session with no `direct` trust needed [HW].
 
 ### Every later connection (`mode: "direct"`)
 
@@ -111,7 +121,8 @@ Untested: whether pairing a second user evicts the first, or the G1 keeps severa
 ## 6. Live data [HW]
 
 After a trusted `direct` session starts, the G1 pushes `WT10:status:report` every **2.0 s**
-with no request needed (`device:status:request` gets no reply).
+while a probe is out of the dock, and every **10 s** when all probes are docked, with no request
+needed (`device:status:request` gets no reply).
 
 ```json
 {"globalStatus": "online", "batteryStatus": "normal", "batteryValue": 83, "wifiRssi": -35,
@@ -129,6 +140,8 @@ with no request needed (`device:status:request` gets no reply).
 - `areaTemperature` = five zones, tip first. `curTemperature` = the lowest (core) zone.
 - Docked probe collapses to `{probeColor, cookingState: "charged", cookingMode, setParams}`.
 - `cookingState` seen: `charged`, `cooking`. App constants also list `ready`, `resting`, `remove`.
+- Taking the probe out of the dock starts a Manual cook at the last target by itself [HW].
+- Reports start within about 200 ms of a successful `direct` trust [HW].
 
 ## 7. Commands
 
@@ -164,6 +177,7 @@ All via `WT10:cooking:action`, probe out of the dock. Tested with a manual cook.
 | Change target | `1` with the **running** `cookUuid` and its `startClient`; `cookingData: null` if `startClient` is `device` | Applied in about 0.1 s. Same cook, timer keeps counting |
 | Start new cook | `1` with a **new** `cookUuid` | Replaces the running cook. Timer resets to 0, `startClient` becomes ours |
 | Stop | `2` + `cookUuid` | Receipt `success` but **no change**: still `cooking` |
+| Start while docked | `1` with a new `cookUuid` | Receipt `success` but **no change**: still `charged` |
 | Finish | `5` + `cookUuid` | `failure`, `cmdError: 4`; still `cooking` |
 | Resting | `4` + `cookUuid` | Not tested. Only valid with a rest target [APK] |
 

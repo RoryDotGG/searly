@@ -8,6 +8,9 @@
     uv run g1.py watch           # stream status reports (trusted reconnect, no button)
     uv run g1.py send TYPE JSON  # e.g. send WT10:setting:modify '{"volume":"mute"}'
     uv run g1.py test            # offline self-check of the framing
+    uv run g1.py fixtures > ../../src/protocol/fixtures.json   # byte fixtures for the app's vitest
+
+Add --raw to any command to send uncompressed zstd blocks, which is what the app will send.
 
 Identity (userId/deviceId) is kept in g1-identity.json beside this file.
 """
@@ -21,6 +24,7 @@ CUSTOM = (19 << 2) | 1  # BluFi data frame, subtype 19 "custom data" = 0x4D
 FC_FRAG = 0x10
 MODEL = "WT10"
 IDENTITY = pathlib.Path(__file__).with_name("g1-identity.json")
+RAW = "--raw" in sys.argv
 
 
 def crc16_xmodem(b, crc=0):
@@ -31,9 +35,14 @@ def crc16_xmodem(b, crc=0):
     return crc
 
 
-def pack(obj):
+def zstd_raw(b):
+    """A zstd frame holding one uncompressed block: magic, FHD 0xA0 (single segment, u32 size), block header."""
+    return b"\x28\xb5\x2f\xfd\xa0" + struct.pack("<I", len(b)) + ((len(b) << 3) | 1).to_bytes(3, "little") + b
+
+
+def pack(obj, raw_block=False):
     raw = json.dumps(obj, separators=(",", ":")).encode()
-    comp = zstd.ZstdCompressor(level=3).compress(raw)
+    comp = zstd_raw(raw) if raw_block else zstd.ZstdCompressor(level=3).compress(raw)
     body = struct.pack("<HH", len(comp), len(raw)) + comp
     return b"\xaa\xaa" + body + struct.pack("<HH", crc16_xmodem(body), crc16_xmodem(raw))
 
@@ -89,7 +98,7 @@ class G1:
         obj = {"cmdId": uuid.uuid4().hex, "cmdSeqNo": self.cmd_seq, "cmdType": cmd_type, "cmdData": data or {},
                "deviceId": self.device_id, "deviceType": MODEL, "protocol": "BT",
                "serverTime": now * 1000, "serverTimeSecond": now}
-        pkts, self.seq = frames(self.seq, pack(obj))
+        pkts, self.seq = frames(self.seq, pack(obj, RAW))
         for p in pkts:
             await self.c.write_gatt_char(WRITE, p, response=True)
         return obj["cmdId"]
@@ -172,6 +181,9 @@ async def main(argv):
 def test():
     msg = {"cmdType": "x", "cmdData": {"t": 1}}
     assert unpack(pack(msg)) == msg
+    assert unpack(pack(msg, raw_block=True)) == msg
+    assert zstd.ZstdDecompressor().decompress(zstd_raw(b"")) == b""
+    assert zstd_raw(b"ab").hex() == "28b52ffda0" + "02000000" + "110000" + "6162"  # (2 << 3) | 1 = 0x11
     assert crc16_xmodem(b"123456789") == 0x31C3  # CRC-16/XMODEM check value
     big = pack({"pad": secrets.token_hex(400)})  # incompressible, so it must fragment
     pkts, seq = frames(0, big)
@@ -180,5 +192,39 @@ def test():
     print("ok")
 
 
+def fixtures():
+    """Fixed inputs and the bytes this client produces for them, for src/protocol/protocol.test.ts."""
+    cmd = {"cmdId": "0123456789abcdef0123456789abcdef", "cmdSeqNo": 1, "cmdType": "WT10:setting:modify",
+           "cmdData": {"volume": "mute"}, "deviceId": "123456789012345678", "deviceType": MODEL, "protocol": "BT",
+           "serverTime": 1793124978000, "serverTimeSecond": 1793124978}
+    long = dict(cmd, cmdData={"pad": "0123456789" * 40})
+    report = {"cmdId": "fedcba9876543210fedcba9876543210", "cmdSeqNo": "17", "cmdType": "WT10:status:report",
+              "deviceId": "123456789012345678", "deviceType": MODEL, "protocol": "BT", "deviceTimeSecond": 1793124980,
+              "userId": "987654321098765432", "appVersion": 25, "controlBoardVersion": 25,
+              "cmdData": {"globalStatus": "online", "batteryStatus": "normal", "batteryValue": 83, "wifiRssi": -35,
+                          "volume": "mute", "connectStatus": "bt", "hasWifiConfig": False, "probes": [
+                              {"deviceSn": "WPGB0123456789ABCD", "probeColor": "probe1", "cookingState": "cooking",
+                               "cookingMode": "manual", "cookUuid": "00112233445566778899aabbccddeeff",
+                               "startClient": "android", "curTemperature": 758, "curAmbientTemperature": 754,
+                               "curRawAmbientTemperature": 752, "areaTemperature": [758, 761, 763, 763, 764],
+                               "temperaturePercentile": [1, 2, 3, 4, 5, 6, 7], "setParams": [{"setTemperature": 1400}],
+                               "batteryValue": 100, "curCookSec": 12, "totalCookSec": 0, "curRemainedSec": None},
+                              {"probeColor": "probe2", "cookingState": "charged", "cookingMode": "manual",
+                               "setParams": [{"setTemperature": 1400}]}]}}
+    hexes = lambda pkts: [p.hex() for p in pkts]
+    long_frames, _ = frames(254, pack(long, raw_block=True))  # starts at 254 so seq wraps past 255
+    report_frames, _ = frames(3, pack(report))  # real zstd, as the G1 sends
+    report_frames = [bytes([p[0], p[1] | 0x04]) + p[2:] for p in report_frames]  # 0x04: device-to-phone
+    assert len(long_frames) > 1 and len(report_frames) > 1
+    json.dump({
+        "command": {"obj": cmd, "packed": pack(cmd, raw_block=True).hex(), "frames": hexes(frames(0, pack(cmd, raw_block=True))[0])},
+        "long": {"obj": long, "packed": pack(long, raw_block=True).hex(), "frames": hexes(long_frames)},
+        "report": {"obj": report, "frames": hexes(report_frames)},
+    }, sys.stdout, indent=2)
+    print()
+
+
 if __name__ == "__main__":
-    test() if sys.argv[1:2] == ["test"] else asyncio.run(main(sys.argv[1:]))
+    args = [a for a in sys.argv[1:] if a != "--raw"]
+    cli = {"test": test, "fixtures": fixtures}
+    cli[args[0]]() if args[:1] and args[0] in cli else asyncio.run(main(args))
