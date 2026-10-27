@@ -18,10 +18,14 @@ export class SetupError extends Error {
   constructor(
     message: string,
     readonly fix: "retry" | "settings",
+    readonly kind: "bluetooth" | "permission",
   ) {
     super(message);
   }
 }
+
+/** The scan ended without seeing the G1. */
+export class NotFoundError extends Error {}
 
 /** A receipt that is not a success, kept so callers can tell cmdError 11 from the rest. */
 export class ReceiptError extends Error {
@@ -41,9 +45,9 @@ async function requestPermissions(): Promise<void> {
   const states = wanted.map((p) => result[p]);
   if (states.every((r) => r === PermissionsAndroid.RESULTS.GRANTED)) return;
   if (states.includes(PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN)) {
-    throw new SetupError("Searly needs the Nearby devices permission. Allow it in Settings.", "settings");
+    throw new SetupError("Searly needs the Nearby devices permission. Allow it in Settings.", "settings", "permission");
   }
-  throw new SetupError("Searly needs the Nearby devices permission to find the G1.", "retry");
+  throw new SetupError("Searly needs the Nearby devices permission to find the G1.", "retry", "permission");
 }
 
 let started: Promise<void> | null = null;
@@ -68,7 +72,7 @@ export async function ready(prompt: boolean): Promise<void> {
       // declined
     }
   }
-  throw new SetupError("Bluetooth is off.", "retry");
+  throw new SetupError("Bluetooth is off.", "retry", "bluetooth");
 }
 
 /** Runs `cb` each time the Bluetooth adapter turns on. */
@@ -78,8 +82,8 @@ export function onBluetoothOn(cb: () => void): EventSubscription {
   });
 }
 
-/** Scan for the stored G1, or any G1 when there is none. Resolves with its peripheral id. */
-export function find(peripheralId?: string, seconds = 20): Promise<string> {
+/** Scan for the stored G1, or any G1 when there is none. Resolves with its peripheral id and name. */
+export function find(peripheralId?: string, seconds = 20): Promise<{ id: string; name: string }> {
   return new Promise((resolve, reject) => {
     const done = () => {
       discovered.remove();
@@ -90,11 +94,11 @@ export function find(peripheralId?: string, seconds = 20): Promise<string> {
       if (peripheralId ? p.id !== peripheralId : !name.startsWith(NAME_PREFIX)) return;
       done();
       void BleManager.stopScan();
-      resolve(p.id);
+      resolve({ id: p.id, name });
     });
     const stopped = BleManager.onStopScan(() => {
       done();
-      reject(new Error("G1 not found. Is it on and in range?"));
+      reject(new NotFoundError("G1 not found. Is it on and in range?"));
     });
     BleManager.scan({ serviceUUIDs: [SERVICE], seconds }).catch((e: unknown) => {
       done();
@@ -103,8 +107,11 @@ export function find(peripheralId?: string, seconds = 20): Promise<string> {
   });
 }
 
+/** Debug log direction: sent, received, Searly itself, or an error. */
+export type LogDir = "tx" | "rx" | "sys" | "err";
+
 export interface SessionEvents {
-  log(line: string): void;
+  log(line: string, dir?: LogDir): void;
   /** Everything except receipts for our own commands. */
   message(m: Incoming): void;
   disconnected(reason: string): void;
@@ -202,9 +209,12 @@ export class G1Session {
       this.waiting.set(cmd.cmdId, { resolve, reject, onWaiting });
     });
     receipt.catch(() => undefined); // a disconnect mid-write rejects it before it is awaited
+    this.events.log(`${cmdType} cmdSeqNo ${cmdSeqNo}`, "tx");
     try {
       await this.write(pack(cmd));
-      return await receipt;
+      const r = await receipt;
+      this.events.log(`receipt ${r.executeResult}${r.cmdError === undefined ? "" : ` cmdError ${r.cmdError}`}`, "rx");
+      return r;
     } finally {
       clearTimeout(timer);
       this.waiting.delete(cmd.cmdId);
@@ -273,7 +283,7 @@ export class G1Session {
       if (!payload) return;
       msg = incoming(unpack(payload));
     } catch (e) {
-      this.events.log(`dropped frame (${value.length} bytes): ${e instanceof Error ? e.message : String(e)}`);
+      this.events.log(`dropped frame (${value.length} bytes): ${e instanceof Error ? e.message : String(e)}`, "err");
       return;
     }
     if (!msg) return;
@@ -282,6 +292,7 @@ export class G1Session {
     if (!w || !r) {
       this.events.message(msg);
     } else if (r.cmdError === 10) {
+      this.events.log("receipt cmdError 10, waiting for OK on the G1", "rx");
       w.onWaiting?.();
     } else {
       w.resolve(r);
@@ -321,6 +332,8 @@ export interface Identity {
   userId: string;
   deviceId: string;
   peripheralId: string;
+  /** The advertised name, such as TM-WT10-3F2A. Missing in pairings saved before it was kept. */
+  name?: string;
 }
 
 // Anyone holding these can drive the G1, so they live in the keystore.
@@ -333,7 +346,9 @@ export async function loadIdentity(): Promise<Identity | null> {
   if (typeof v.userId !== "string" || typeof v.deviceId !== "string" || typeof v.peripheralId !== "string") {
     return null;
   }
-  return { userId: v.userId, deviceId: v.deviceId, peripheralId: v.peripheralId };
+  const id: Identity = { userId: v.userId, deviceId: v.deviceId, peripheralId: v.peripheralId };
+  if (typeof v.name === "string" && v.name) id.name = v.name;
+  return id;
 }
 
 export function saveIdentity(identity: Identity): Promise<void> {

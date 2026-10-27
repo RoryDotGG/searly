@@ -1,184 +1,175 @@
-import { useEffect, useState } from "react";
-import { Button, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+// The live screen, top to bottom: cook chip and timer, heat dial, at most one notice, the probe card
+// and the batteries. One primary action at the bottom.
+import { useState, type ReactNode } from "react";
+import { View } from "react-native";
 
-import { loadUnit, saveUnit } from "../prefs";
 import { fromTenthsF, type Probe, type Unit } from "../protocol/messages";
 import type { G1 } from "../useG1";
-import CookModal from "./CookModal";
-import DebugLog from "./DebugLog";
-import SettingsModal from "./SettingsModal";
+import { Button } from "../ui/controls";
+import HeatDial, { type DialState } from "../ui/HeatDial";
+import { Caption, Screen, Tile } from "../ui/layout";
+import ProbeZones from "../ui/ProbeZones";
+import { Battery, CookStatus, Notice, RetrySchedule, type PillState } from "../ui/status";
+import type { Bar } from "./RecoveryScreens";
 
-export default function LiveScreen({ g1 }: { g1: G1 }) {
-  const [showLog, setShowLog] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [cookFor, setCookFor] = useState<string | null>(null); // probeColor
-  const [unit, setUnit] = useState<Unit>("C");
-  const { phase, report } = g1;
-  const live = phase.kind === "live";
-  const dim = !live || g1.stale;
-  const cookProbe = report?.probes.find((p) => p.probeColor === cookFor);
+const LOW_BATTERY = 20;
 
-  useEffect(() => {
-    loadUnit().then(setUnit, () => undefined);
-  }, []);
-
-  const changeUnit = (u: Unit) => {
-    setUnit(u);
-    void saveUnit(u);
-  };
-
-  return (
-    <View style={styles.screen}>
-      <Pressable style={styles.header} onLongPress={() => setShowLog(true)}>
-        <Text style={styles.title}>Searly</Text>
-        <View style={styles.headerRight}>
-          <Text style={[styles.connection, dim && styles.warn]}>{connection(g1)}</Text>
-          {report ? <Text style={styles.muted}>G1 battery {report.batteryValue}%</Text> : null}
-        </View>
-        <Button title="Settings" onPress={() => setShowSettings(true)} />
-      </Pressable>
-      {phase.kind === "error" ? (
-        <View style={styles.banner}>
-          <Text style={styles.bannerText}>{phase.reason}</Text>
-          <Button title={phase.fix === "settings" ? "Open settings" : "Try again"} onPress={g1.retry} />
-        </View>
-      ) : null}
-      <ScrollView contentContainerStyle={styles.cards}>
-        {report ? (
-          report.probes.map((p) => (
-            <ProbeCard
-              key={p.probeColor}
-              probe={p}
-              unit={unit}
-              dim={dim}
-              onCook={live && !g1.stale ? () => setCookFor(p.probeColor) : undefined}
-            />
-          ))
-        ) : (
-          <Text style={styles.muted}>Waiting for the G1…</Text>
-        )}
-      </ScrollView>
-      {cookProbe && live ? (
-        <CookModal g1={g1} probe={cookProbe} unit={unit} onClose={() => setCookFor(null)} />
-      ) : null}
-      {showSettings ? (
-        <SettingsModal g1={g1} unit={unit} onUnit={changeUnit} onClose={() => setShowSettings(false)} />
-      ) : null}
-      <DebugLog g1={g1} visible={showLog} onClose={() => setShowLog(false)} />
-    </View>
-  );
-}
-
-function connection(g1: G1): string {
-  const { phase } = g1;
-  switch (phase.kind) {
+/** The connection pill for a paired G1. */
+export function pillFor(g1: G1, now: number): { state: PillState; seconds?: number | undefined } {
+  const p = g1.phase;
+  switch (p.kind) {
     case "live":
-      return g1.stale ? `No data for ${Math.round(g1.silentFor / 1000)} s` : "Connected";
+      return g1.stale ? { state: "stale", seconds: Math.round(g1.silentFor / 1000) } : { state: "live" };
     case "reconnecting":
-      return `Reconnecting (attempt ${phase.attempt})`;
+      return { state: "reconnecting", seconds: p.nextAt === null ? undefined : Math.max(0, Math.ceil((p.nextAt - now) / 1000)) };
     case "scanning":
-      return "Looking for the G1";
+      return { state: "searching" };
     case "connecting":
     case "trusting":
-      return "Connecting";
+      return { state: "connecting" };
+    case "error":
+      return p.cause === "bluetooth" ? { state: "off" } : p.cause === "permission" ? { state: "permission" } : { state: "error" };
+    case "needs-repair":
+      return { state: "error" };
     default:
-      return "Not connected";
+      return { state: "searching" };
   }
 }
 
-function ProbeCard(props: { probe: Probe; unit: Unit; dim: boolean; onCook: (() => void) | undefined }) {
-  const { probe: p, unit, dim } = props;
-  const docked = p.curTemperature === undefined;
-  const temp = (t: number | undefined) => (t === undefined ? "–" : `${fromTenthsF(t, unit).toFixed(1)} °${unit}`);
+function lowBattery(probe: Probe, g1Level: number, cooking: boolean): ReactNode {
+  const probeLow = probe.batteryValue !== undefined && probe.batteryValue <= LOW_BATTERY;
+  const baseLow = g1Level <= LOW_BATTERY;
+  if (!probeLow && !baseLow) return null;
+  const title =
+    probeLow && baseLow
+      ? `Probe battery ${probe.batteryValue}%, G1 ${g1Level}%`
+      : probeLow
+        ? `Probe battery ${probe.batteryValue}%`
+        : `G1 battery ${g1Level}%`;
+  const body = probeLow
+    ? cooking
+      ? "Docking the probe ends the cook, so charge it once you’re done."
+      : "Put the probe back in the dock to charge it before you start a cook."
+    : "Charge the G1 soon. If it switches off, the readings stop.";
   return (
-    <View style={[styles.card, dim && styles.dim]}>
-      <View style={styles.row}>
-        <Text style={styles.probeName}>{p.probeColor.replace(/^probe(\d+)$/, "Probe $1")}</Text>
-        {p.batteryValue !== undefined ? <Text style={styles.muted}>Battery {p.batteryValue}%</Text> : null}
+    <Notice tone="warn" icon={probeLow ? "probe" : "alert"} title={title}>
+      {body}
+    </Notice>
+  );
+}
+
+export default function LiveScreen(props: { g1: G1; unit: Unit; bar: Bar; onCook: () => void }) {
+  const { g1, unit } = props;
+  const report = g1.report!;
+  const [bodyH, setBodyH] = useState(0);
+  const [dial, setDial] = useState(288);
+  const probe = report.probes[0];
+  const conv = (v: number | undefined) => (v === undefined ? undefined : fromTenthsF(v, unit));
+
+  const docked = !probe || probe.curTemperature === undefined;
+  const cooking = !docked && probe.cookingState === "cooking";
+  const core = conv(probe?.curTemperature);
+  const target = conv(probe?.setParams[0]?.setTemperature);
+  const start = conv(g1.cookStart(probe?.cookUuid));
+  const done = cooking && core !== undefined && target !== undefined && core >= target;
+  const stale = g1.stale;
+  const dialState: DialState = docked ? "docked" : !cooking ? "ready" : stale ? "stale" : "cooking";
+
+  let notice: ReactNode = null;
+  if (stale) {
+    const p = g1.phase;
+    const body =
+      p.kind === "reconnecting"
+        ? "Showing the last reading. Searly keeps trying while the app is open."
+        : p.kind === "live"
+          ? "Showing the last reading. Try now reconnects to the G1."
+          : "Showing the last reading. Searly is connecting now.";
+    notice = (
+      <Notice
+        tone="warn"
+        title={`No data for ${Math.round(g1.silentFor / 1000)} s`}
+        {...(p.kind === "reconnecting" ? { action: <RetrySchedule attempt={Math.min(5, p.attempt - 1)} /> } : {})}
+      >
+        {body}
+      </Notice>
+    );
+  } else if (docked) {
+    notice = (
+      <Notice tone="info" icon="probe" title="Take the probe out to start a cook">
+        The G1 can only start a cook with the probe out of the dock.
+      </Notice>
+    );
+  } else if (probe) {
+    notice = lowBattery(probe, report.batteryValue, cooking);
+  }
+
+  const footer = stale ? (
+    <Button size="lg" block variant="secondary" icon="refresh" onPress={g1.retryNow}>
+      Try now
+    </Button>
+  ) : docked ? (
+    <>
+      <Button size="lg" block disabled>
+        Start cook
+      </Button>
+      <Caption>Available once the probe is out of the dock.</Caption>
+    </>
+  ) : cooking ? (
+    <>
+      <Button size="lg" block icon="thermometer" onPress={props.onCook}>
+        Change target
+      </Button>
+      <Caption>To end the cook, put the probe back in the dock.</Caption>
+    </>
+  ) : (
+    <Button size="lg" block icon="thermometer" onPress={props.onCook}>
+      Start cook
+    </Button>
+  );
+
+  return (
+    <Screen {...props.bar} footer={footer}>
+      <View style={{ flex: 1 }} onLayout={(e) => setBodyH(e.nativeEvent.layout.height)}>
+        <View
+          style={{ gap: 16 }}
+          onLayout={(e) => {
+            // 288 by default, 256 when the screen is too short for everything.
+            const h = e.nativeEvent.layout.height;
+            if (!bodyH) return;
+            if (dial === 288 && h > bodyH) setDial(256);
+            else if (dial === 256 && h + 32 <= bodyH) setDial(288);
+          }}
+        >
+          <View style={{ alignItems: "center", paddingTop: 2 }}>
+            <CookStatus
+              state={docked ? "docked" : cooking ? (done ? "done" : "cooking") : "idle"}
+              mode={probe?.cookingMode === "smart" ? "smart" : "manual"}
+              elapsed={probe?.curCookSec}
+              running={cooking && !stale}
+            />
+          </View>
+          <HeatDial state={dialState} core={core} target={target} start={start} unit={unit} size={dial} />
+          {notice}
+          {!stale && !docked && probe ? (
+            <Tile style={{ paddingTop: 12, paddingBottom: 4 }}>
+              <ProbeZones
+                zones={(probe.areaTemperature ?? []).map((v) => fromTenthsF(v, unit))}
+                ambient={conv(probe.curAmbientTemperature)}
+                start={start}
+                target={cooking ? target : undefined}
+                unit={unit}
+                probeNumber={probe.probeColor.replace(/^\D+/, "") || "1"}
+              />
+            </Tile>
+          ) : null}
+          {stale ? null : (
+            <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 4 }}>
+              <Battery label="Probe" level={probe?.batteryValue} charging={docked} />
+              <Battery label="G1" level={report.batteryValue} />
+            </View>
+          )}
+        </View>
       </View>
-      {docked ? (
-        <>
-          <Text style={styles.docked}>Docked, charging</Text>
-          {/* The G1 acknowledges a start while docked but ignores it; undocking starts a cook [HW]. */}
-          <Text style={styles.muted}>Take the probe out of the dock to start a cook.</Text>
-        </>
-      ) : (
-        <>
-          <Text style={styles.core}>{temp(p.curTemperature)}</Text>
-          <Text style={styles.detail}>
-            Ambient {temp(p.curAmbientTemperature)} · Target {temp(p.setParams[0]?.setTemperature)}
-          </Text>
-          <Zones values={p.areaTemperature ?? []} unit={unit} />
-          <Text style={styles.detail}>
-            {title(p.cookingState)} · {title(p.cookingMode)} · {clock(p.curCookSec)}
-          </Text>
-        </>
-      )}
-      {props.onCook && !docked ? (
-        <Button title={p.cookingState === "cooking" ? "Change target" : "Start cook"} onPress={props.onCook} />
-      ) : null}
-    </View>
+    </Screen>
   );
 }
-
-/** The five probe zones, tip first. */
-function Zones({ values, unit }: { values: number[]; unit: Unit }) {
-  if (values.length === 0) return null;
-  return (
-    <View style={styles.zones}>
-      <Text style={styles.zoneEnd}>tip</Text>
-      {values.map((v, i) => (
-        <Text key={i} style={styles.zone}>
-          {fromTenthsF(v, unit).toFixed(0)}°
-        </Text>
-      ))}
-      <Text style={styles.zoneEnd}>handle</Text>
-    </View>
-  );
-}
-
-function clock(sec: number | undefined): string {
-  if (sec === undefined) return "0:00:00";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${Math.floor(sec / 3600)}:${pad(Math.floor(sec / 60) % 60)}:${pad(sec % 60)}`;
-}
-
-function title(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#fff", paddingTop: 56 },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  headerRight: { alignItems: "flex-end" },
-  title: { fontSize: 24, fontWeight: "600" },
-  connection: { fontSize: 15, fontWeight: "500", color: "#1a7f37" },
-  warn: { color: "#b35900" },
-  muted: { color: "#666" },
-  banner: { margin: 16, padding: 12, backgroundColor: "#fdecea", borderRadius: 8, gap: 8 },
-  bannerText: { fontSize: 15 },
-  cards: { padding: 16, gap: 16 },
-  card: { padding: 16, borderRadius: 12, backgroundColor: "#f4f4f4", gap: 8 },
-  dim: { opacity: 0.5 },
-  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  probeName: { fontSize: 17, fontWeight: "600" },
-  docked: { fontSize: 20, color: "#666" },
-  core: { fontSize: 56, fontWeight: "300", fontVariant: ["tabular-nums"] },
-  detail: { fontSize: 15 },
-  zones: { flexDirection: "row", alignItems: "center", gap: 4 },
-  zone: {
-    flex: 1,
-    textAlign: "center",
-    paddingVertical: 6,
-    backgroundColor: "#e4e4e4",
-    borderRadius: 4,
-    fontVariant: ["tabular-nums"],
-  },
-  zoneEnd: { fontSize: 11, color: "#666" },
-});
