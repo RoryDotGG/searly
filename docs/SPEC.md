@@ -171,7 +171,7 @@ schedule, before the first reading), Not recognised (cmdError 11), and a storage
 - Target range: 30 to 100 °C (86 to 212 °F) until the official app's limits are read from the APK.
   This is an assumption.
 
-**SettingsSheet**: volume (`high` / `medium` / `quiet` / `mute`) via `WT10:setting:modify`
+**SettingsSheet**: volume (`high` / `low` / `mute`, labelled High / Quiet / Mute) via `WT10:setting:modify`
 [HW], confirmed by the report's `volume`; °C / °F (local only, kept in SecureStore; the G1's own
 screen keeps its unit); "Forget this G1" (deletes stored identity; does not unbind the device).
 

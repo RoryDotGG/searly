@@ -117,6 +117,7 @@ Untested: whether pairing a second user evicts the first, or the G1 keeps severa
 | 10 | Awaiting OK on the device (not a failure) |
 | 11 | Refused: not the owner, declined, timed out, or probe not docked |
 | 4 | Cooking action not valid in the current cook state (Finish while cooking) |
+| 6 | Setting value not accepted (`volume: "quiet"`) [HW] |
 
 ## 6. Live data [HW]
 
@@ -151,7 +152,7 @@ needed (`device:status:request` gets no reply).
 |---|---|---|
 | `BT:apply:trust` | see section 5 | [HW] |
 | `BT:Pair:Result` | `{"result": "success"}` | [HW] |
-| `WT10:setting:modify` | one of `volume` (`high`/`medium`/`quiet`/`mute`), `screenBrightness`, `screenSleepTime`, `readyNotification`, `temperatureUnit`, `lengthUnit`, `weightUnit`, `language` | `volume` `high`, `medium`, `mute` [HW]; `quiet` gets `failure`, `cmdError: 6` on firmware 25 [HW]; rest [APK] |
+| `WT10:setting:modify` | one of `volume` (`high`/`medium`/`low`/`mute`), `screenBrightness`, `screenSleepTime`, `readyNotification`, `temperatureUnit`, `lengthUnit`, `weightUnit`, `language` | `volume` [HW], rest [APK] |
 | `WT10:cooking:action` | see section 8 | start, change target [HW]; stop, finish [HW] but no effect while probe is out |
 | `WT10:probe:search` | `{probeColor}` | [APK] |
 | `WT10:alert:dismiss` | `{}` | [APK] |
@@ -159,6 +160,12 @@ needed (`device:status:request` gets no reply).
 | `BT:WIFI:request` → `BT:WIFI:List` | `{}` → `[{SSID, rssi, connected, pwLen}]` | [APK], not needed offline |
 | `BT:Config:WIFI` | `{"SSID", "password"}` | [APK], not needed offline |
 | `BT:user:unbind` | `{}` | [APK] |
+
+`volume`: all four values give `success` and the next status report shows the new value [HW].
+The official app's picker offers only `high`/`low`/`mute` [APK], and the G1's own menu only
+Loud/Quiet/Mute [HW]. `medium` has no menu entry and seems to sound the same as `high`.
+`quiet` (used by the cloud models in ha-thermomaven) gets `failure`, `cmdError: 6`, and the
+volume does not change [HW].
 
 Field semantics for cooking commands are documented from cloud captures in
 [kingchddg901/ha-thermomaven docs/PROTOCOL.md](https://github.com/kingchddg901/ha-thermomaven/blob/main/docs/PROTOCOL.md);

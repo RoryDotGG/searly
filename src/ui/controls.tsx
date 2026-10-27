@@ -185,10 +185,9 @@ export function SegmentedControl<V extends string>(props: {
   const reduced = useReducedMotion();
   const [width, setWidth] = useState(0);
   const n = Math.max(1, props.options.length);
-  const idx = Math.max(
-    0,
-    props.options.findIndex((o) => o.value === props.value),
-  );
+  // A value with no option (the G1 set to medium elsewhere) shows no thumb rather than a wrong one.
+  const found = props.options.findIndex((o) => o.value === props.value);
+  const idx = Math.max(0, found);
   const thumbW = (width - 8) / n;
   const x = useRef(new Animated.Value(0)).current;
   const placed = useRef(false);
@@ -218,7 +217,7 @@ export function SegmentedControl<V extends string>(props: {
         minHeight: size.control,
       }}
     >
-      {width && props.value !== undefined ? (
+      {width && found >= 0 ? (
         <Animated.View
           style={{
             position: "absolute",

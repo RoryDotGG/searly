@@ -6,7 +6,7 @@
 
     uv run g1.py pair            # first time: dock probe, press OK on the G1 when the BT icon flashes
     uv run g1.py watch           # stream status reports (trusted reconnect, no button)
-    uv run g1.py send TYPE JSON  # e.g. send WT10:setting:modify '{"volume":"mute"}'
+    uv run g1.py send TYPE JSON  # e.g. send WT10:setting:modify '{"volume":"mute"}', then shows the next report
     uv run g1.py test            # offline self-check of the framing
     uv run g1.py fixtures > ../../src/protocol/fixtures.json   # byte fixtures for the app's vitest
 
@@ -139,7 +139,7 @@ def show(msg):
                           f"ambient {c(p['curAmbientTemperature'])} bat {p.get('batteryValue')}%")
         else:
             probes.append(f"{p['probeColor']} {p['cookingState']}")
-    print(f"base bat {d.get('batteryValue')}% | " + " | ".join(probes))
+    print(f"base bat {d.get('batteryValue')}% vol {d.get('volume')} | " + " | ".join(probes))
 
 
 async def connect():
@@ -174,6 +174,9 @@ async def main(argv):
             sys.exit(f"not trusted (re-run pair): {r}")
         if cmd == "send":
             print(json.dumps(await g.receipt(await g.send(argv[1], json.loads(argv[2])), 10)))
+            while not (msg := await g.q.get())["cmdType"].endswith(":status:report"):
+                show(msg)
+            show(msg)  # the next report shows whether the change took
         while cmd == "watch":
             show(await g.q.get())
 

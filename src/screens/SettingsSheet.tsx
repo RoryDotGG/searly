@@ -14,10 +14,10 @@ const UNITS = [
   { value: "F", label: "°F" },
 ] as const;
 
+// The G1's own menu offers Loud, Quiet and Mute; Quiet is "low" on the wire (see docs/PROTOCOL.md).
 const VOLUMES = [
   { value: "high", label: "High" },
-  { value: "medium", label: "Medium" },
-  { value: "quiet", label: "Quiet" },
+  { value: "low", label: "Quiet" },
   { value: "mute", label: "Mute" },
 ] as const;
 
