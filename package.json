@@ -1,6 +1,12 @@
 {
   "name": "searly",
   "version": "0.1.0",
+  "description": "Offline Android app for the ThermoMaven G1 meat thermometer, over Bluetooth",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RoryDotGG/searly.git"
+  },
   "main": "index.ts",
   "dependencies": {
     "@expo-google-fonts/instrument-sans": "0.4.2",
