@@ -5,7 +5,6 @@ import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from "react-nativ
 
 import type { Unit } from "../protocol/messages";
 import Icon from "./Icon";
-import { useBlinkBetween } from "./motion";
 import Temp from "./Temp";
 import { font, motion, type, useReducedMotion, useTheme } from "./theme";
 
@@ -58,7 +57,6 @@ export default function HeatDial(props: {
   }, [f, reduced, anim]);
   const dash = anim.interpolate({ inputRange: [0, 1], outputRange: [L, 0] });
   const rotate = anim.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "270deg"] });
-  const breathe = useBlinkBetween(0.35, 0.85, 2400, done, 0.5);
 
   const ticks = [];
   for (let i = 0; i <= 54; i++) {
@@ -102,22 +100,6 @@ export default function HeatDial(props: {
   return (
     <View style={{ width: size, height: size, alignSelf: "center", alignItems: "center", justifyContent: "center" }}>
       <View style={[layer, grey]} importantForAccessibility="no-hide-descendants">
-        {noArc ? null : (
-          <View style={[layer, { opacity: t.dark ? 0.28 : 0.18, filter: "blur(10px)" }]}>
-            <Svg width={size} height={size}>
-              {gradient}
-              <AnimatedPath
-                d={d}
-                fill="none"
-                stroke={`url(#${gid})`}
-                strokeWidth={stroke + 10}
-                strokeLinecap="round"
-                strokeDasharray={[L, L]}
-                strokeDashoffset={dash}
-              />
-            </Svg>
-          </View>
-        )}
         <Svg width={size} height={size} style={layer}>
           {gradient}
           {ticks}
@@ -143,21 +125,11 @@ export default function HeatDial(props: {
           {noArc ? null : <Line x1={t1[0]} y1={t1[1]} x2={t2[0]} y2={t2[1]} stroke={t.ink} strokeWidth={3} strokeLinecap="round" />}
         </Svg>
         {noArc ? null : (
-          <>
-            {/* The rotation follows readings (JS driver); the breathing runs natively, so they sit on separate views. */}
-            <Animated.View style={[layer, { transform: [{ rotate }] }]}>
-              <Animated.View style={[layer, { opacity: breathe, filter: "blur(6px)" }]}>
-                <Svg width={size} height={size}>
-                  <Circle cx={s[0]} cy={s[1]} r={14} fill={t.sear} />
-                </Svg>
-              </Animated.View>
-            </Animated.View>
-            <Animated.View style={[layer, { transform: [{ rotate }] }]}>
-              <Svg width={size} height={size}>
-                <Circle cx={s[0]} cy={s[1]} r={9} fill={t.ink} stroke={t.ground} strokeWidth={3} />
-              </Svg>
-            </Animated.View>
-          </>
+          <Animated.View style={[layer, { transform: [{ rotate }] }]}>
+            <Svg width={size} height={size}>
+              <Circle cx={s[0]} cy={s[1]} r={9} fill={t.ink} stroke={t.ground} strokeWidth={3} />
+            </Svg>
+          </Animated.View>
         )}
       </View>
 

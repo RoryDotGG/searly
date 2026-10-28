@@ -58,7 +58,7 @@ export function Screen(props: {
         {props.children}
       </View>
       {props.footer ? (
-        <View style={{ paddingTop: space[3], paddingHorizontal: space[4], paddingBottom: space[4], gap: 10 }}>{props.footer}</View>
+        <View style={{ paddingTop: space[3], paddingHorizontal: space[4], paddingBottom: space[4], gap: space[3] }}>{props.footer}</View>
       ) : null}
     </View>
   );
@@ -165,7 +165,7 @@ export function Sheet(props: {
             </View>
           ) : null}
           {props.children}
-          {props.footer ? <View style={{ gap: 8 }}>{props.footer}</View> : null}
+          {props.footer ? <View style={{ gap: space[3] }}>{props.footer}</View> : null}
         </Animated.View>
       </View>
     </Modal>
@@ -211,10 +211,10 @@ export function ListRow(props: {
       style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "center",
-        gap: 14,
+        gap: space[3],
         minHeight: 60,
-        paddingVertical: 10,
-        paddingHorizontal: 16,
+        paddingVertical: space[3],
+        paddingHorizontal: space[4],
         backgroundColor: pressed ? t.surfaceRaised : "transparent",
         borderTopWidth: props.divider ? 1 : 0,
         borderTopColor: t.line,
@@ -225,7 +225,7 @@ export function ListRow(props: {
           style={{
             width: 36,
             height: 36,
-            borderRadius: 11,
+            borderRadius: radius.sm,
             alignItems: "center",
             justifyContent: "center",
             backgroundColor: danger ? t.dangerWash : t.surfaceRaised,
@@ -306,7 +306,7 @@ export function Disc(props: { tone: DiscTone; icon: IconName; size?: number; rin
         justifyContent: "center",
         backgroundColor: c.bg,
         boxShadow: c.shadow,
-        marginBottom: props.size ? 0 : 6,
+        marginBottom: props.size ? 0 : space[2],
       }}
     >
       <Icon name={props.icon} size={s === 96 ? 40 : 32} strokeWidth={s === 96 ? 1.6 : 1.75} color={c.fg} />
@@ -377,10 +377,8 @@ export function Tile(props: { children: ReactNode; style?: StyleProp<ViewStyle> 
     <View
       style={[
         {
-          gap: 10,
-          paddingTop: 14,
-          paddingHorizontal: 16,
-          paddingBottom: 16,
+          gap: space[3],
+          padding: space[4],
           borderRadius: radius.md,
           backgroundColor: t.surface,
           boxShadow: `inset 0 0 0 1px ${t.line}`,

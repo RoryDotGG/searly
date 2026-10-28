@@ -20,7 +20,7 @@ function Fact(props: { icon: IconName; children: string }) {
   const t = useTheme();
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-      <Icon name={props.icon} size={22} color={t.searText} />
+      <Icon name={props.icon} size={22} color={t.inkMuted} />
       <Text style={{ fontFamily: font.sans500, fontSize: 15, lineHeight: 20, color: t.ink }}>{props.children}</Text>
     </View>
   );
