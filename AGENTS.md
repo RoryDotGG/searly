@@ -3,10 +3,9 @@ Bluetooth. Read [docs/SPEC.md](docs/SPEC.md) for the plan and [docs/PROTOCOL.md]
 for the wire protocol. [experiments/python/g1.py](experiments/python/g1.py) is the working
 reference client: port from it, and use it to test protocol ideas on hardware before writing app code.
 
-The UI follows the Searly design system, a claude.ai artifact:
-https://claude.ai/artifact/UNDS7F4ytNyq6XYXaUqX8H. Read its `project/README.md` first, then the
-tokens and component files it points to. Its components are React web references: rebuild them in
-React Native and keep the tokens, copy and states as specified.
+The UI follows [docs/DESIGN.md](docs/DESIGN.md): read it before touching `src/ui` or
+`src/screens`. Tokens live in [src/ui/theme.ts](src/ui/theme.ts); keep the copy, sizes and states
+as DESIGN.md specifies.
 
 ## Layout
 

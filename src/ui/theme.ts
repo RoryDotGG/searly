@@ -1,4 +1,4 @@
-// Searly design tokens (the design system's tokens.json), for React Native.
+// Searly design tokens, for React Native. docs/DESIGN.md says how to use them.
 // Char (dark) is the default; Daylight follows the system setting.
 import { useEffect, useState } from "react";
 import { AccessibilityInfo, Easing, useColorScheme, type TextStyle } from "react-native";

@@ -140,8 +140,7 @@ missed reports: 6 s, or 30 s when all probes are docked. A docked probe has only
 
 ## Screens
 
-The UI follows the Searly design system (see AGENTS.md); its README's screen table maps each
-session state to one screen.
+The UI follows [DESIGN.md](DESIGN.md); its screen table maps each session state to one screen.
 
 **PairScreens**: Welcome, step 1 (put the probe in the dock, ownership warning), step 2 (press OK,
 35 s countdown), Paired. A failed attempt returns to step 1 with the reason.
