@@ -11,6 +11,7 @@
     },
     "android": {
       "package": "gg.rory.searly",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0f0d0c",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -62,7 +63,8 @@
             "image": "./assets/splash-icon.png"
           }
         }
-      ]
+      ],
+      "./plugins/withReleasePermissions"
     ]
   }
 }
