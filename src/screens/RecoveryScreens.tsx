@@ -49,7 +49,7 @@ export function BluetoothOff(props: { bar: Bar; paired: boolean; onTurnOn: () =>
         <Title>Bluetooth is off</Title>
         <Lead>
           {props.paired
-            ? "Turn it on and Searly reconnects to your G1 by itself. Nothing else to do."
+            ? "Turn it on and Searly reconnects to your G1 by itself."
             : "Turn it on and Searly picks up the pairing where you left it."}
         </Lead>
       </Centered>
@@ -152,8 +152,8 @@ export function Radar() {
 }
 
 /**
- * Searching, connecting or retrying with no reading yet. The retry schedule is shown rather than
- * hidden. `attempt` counts retries (0 is the first try); `nextIn` is set while waiting for one.
+ * Searching, connecting or retrying with no reading yet, with the retry schedule on screen.
+ * `attempt` counts retries (0 is the first try); `nextIn` is set while waiting for one.
  */
 export function Searching(props: {
   bar: Bar;

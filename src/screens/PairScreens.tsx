@@ -26,7 +26,7 @@ function Fact(props: { icon: IconName; children: string }) {
   );
 }
 
-/** The promise in three lines, then one action. */
+/** A headline, three facts, then one action. */
 export function Welcome(props: { onPair: () => void; onDebug: () => void }) {
   const t = useTheme();
   return (
@@ -46,9 +46,9 @@ export function Welcome(props: { onPair: () => void; onDebug: () => void }) {
       <View style={{ marginTop: 4, marginBottom: -8 }}>
         <HeatDial core={57.6} target={65} start={5} unit="C" state="cooking" size={236} />
       </View>
-      <Text style={[type.titleLg, { color: t.ink }]}>{"Your G1.\nYour phone.\nNothing between."}</Text>
+      <Text style={[type.titleLg, { color: t.ink }]}>{"Read your G1 from across the room"}</Text>
       <Text style={[type.bodyLg, { color: t.inkMuted }]}>
-        Searly talks to your ThermoMaven G1 over Bluetooth. No account, no cloud, no tracking.
+        Searly talks to your ThermoMaven G1 directly over Bluetooth. It needs no account and collects no data.
       </Text>
       <View style={{ gap: 12 }}>
         <Fact icon="cloud-off">Works with no internet at all</Fact>

@@ -136,7 +136,7 @@ export default function CookSheet(props: { g1: G1; probe: Probe; unit: Unit; onD
 
   const hint = (
     <Text style={[type.body, { color: t.inkMuted, marginTop: -8 }]}>
-      {mode === "smart" ? "Smart: the G1 runs its own smart cook to the target you set." : "Manual: the G1 cooks to the target you set."}
+      {mode === "smart" ? "Smart: set the temperature you want to eat at, and the G1 runs the cook." : "Manual: the G1 alerts you when the core reaches the target."}
     </Text>
   );
 

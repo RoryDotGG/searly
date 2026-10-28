@@ -1,7 +1,7 @@
 # Contributing to Searly
 
-Thanks for helping. Searly is small on purpose: an offline app that does a few things for the G1 and
-does them reliably. Open an issue before starting anything large so the scope can be agreed first.
+Thanks for helping. Searly is deliberately small, so open an issue before starting anything large
+and we can agree the scope first.
 
 ## Set up
 

@@ -3,15 +3,15 @@
 This is the source of truth for how Searly looks, reads and moves. Token values live in
 [src/ui/theme.ts](../src/ui/theme.ts); the names below are the ones exported there.
 
-Searly is a free, offline app that controls a ThermoMaven G1 over Bluetooth. No account, no cloud, no tracking. The design follows from where it is used: a phone propped up in a kitchen, often across the room, often with greasy fingers, often at night. Every screen has to be readable at a glance and operable with a thumb.
+Searly is a free, offline app that controls a ThermoMaven G1 over Bluetooth, with no account, cloud or tracking. It runs on a phone propped up in a kitchen, often across the room, used with greasy fingers or at night, so every screen has to be readable at a glance and usable with a thumb.
 
 ## Principles
 
-1. **Glance first.** The core temperature is the biggest thing on the live screen, always in the same place, with how far it has to go ("11° to go") right under it. Everything else is smaller and quieter, and nothing is shown twice. If you can read one number from two metres away, the screen works.
-2. **The G1 has the last word.** A receipt means the G1 heard. A status report means the G1 did it. Searly shows the difference: a change is only *Applied* (cyan) once the next `WT10:status:report` carries it.
-3. **Say what happens next.** Every state ends in a sentence about the next step or what Searly is already doing about it: "Take the probe out to start a cook", "Searly keeps trying while the app is open".
-4. **Nothing pretends.** No fake numbers for a docked probe, no spinner without a reason, no hidden retries. When data stops, the reading greys out and a counter climbs.
-5. **Yours, offline.** The pairing lives in the phone's secure storage. Copy never implies a service, an account or a sync.
+1. The core temperature is the biggest thing on the live screen, always in the same place, with how far it has to go ("11° to go") right under it. Everything else is smaller and quieter, and nothing is shown twice. You should be able to read the core from two metres away.
+2. Only the G1 confirms a change. A receipt means the G1 heard the command; a status report means it acted on it. A change shows as *Applied* (cyan) only once the next `WT10:status:report` carries it.
+3. Every state ends in a sentence about the next step or what Searly is already doing about it: "Take the probe out to start a cook", "Searly keeps trying while the app is open".
+4. Show only real data: no made-up numbers for a docked probe, no spinner without a reason, no hidden retries. When data stops, the reading greys out and a counter climbs.
+5. The pairing lives in the phone's secure storage, and the copy never implies a service, an account or a sync.
 
 ## Voice
 
@@ -32,11 +32,11 @@ Buttons start with a verb and say exactly what will happen, including the value:
 
 Searly is dark first. `Char` (dark) is the default theme; `Daylight` is for bright kitchens and follows the system setting. Read colours with `useTheme()`.
 
-Colour has three jobs, and each hue does exactly one:
+Each hue has one job:
 
-- **Ember is heat and action.** `sear` fills the one primary button per screen, with `onSear` text. `searText` marks ember text on surfaces. Nothing glows: the primary button is a flat fill.
-- **Cyan is the G1 talking.** `signal` means live, confirmed, applied, paired. It nods to the G1's backlit LCD. Never use it decoratively.
-- **Amber needs you.** `warn` is for stale data, Bluetooth off, permissions and mode switches that restart the timer.
+- Ember is heat and action. `sear` fills the one primary button per screen, with `onSear` text. `searText` marks ember text on surfaces. Nothing glows: the primary button is a flat fill.
+- Cyan is the G1 reporting back. `signal` means live, confirmed, applied or paired, and echoes the G1's backlit LCD. Never use it as decoration.
+- Amber needs the person's attention. `warn` is for stale data, Bluetooth off, permissions and mode switches that restart the timer.
 
 `danger` is rare: Forget this G1, pairing declined, no reply. It always comes with an icon and a word, never colour alone, because it sits close to ember in hue. Success and danger are set apart by hue family (cyan against rose), not by red against green.
 
@@ -58,7 +58,7 @@ The `device` tokens (`lcdGlass`, `lcdSegment`, `lcdGhost`, `body`, `shade`, `key
 
 React Native cannot set font variation axes, so Bricolage ships as static instances in [assets/fonts](../assets/fonts), each cut at the weight, optical size and width one style needs (see `font` in `theme.ts`). Instrument Sans 650 is cut the same way; the other Instrument Sans weights and JetBrains Mono come from `@expo-google-fonts`. All are embedded by the `expo-font` plugin in `app.json`. To add a style, cut a new instance rather than stretching an existing one.
 
-Temperatures follow the G1's own screen: **the decimal is small and faint** (`25.6` reads as a big 25 and a small .6). The core shows one decimal; target and ambient show none. In °F, values of 100 or more drop the decimal in probe zones. Use the `Temp` component rather than formatting by hand.
+Temperatures follow the G1's own screen: the decimal is small and faint (`25.6` reads as a big 25 and a small .6). The core shows one decimal; target and ambient show none. In °F, values of 100 or more drop the decimal in probe zones. Use the `Temp` component rather than formatting by hand.
 
 | Number | `Temp` size | Where |
 | --- | --- | --- |
@@ -69,7 +69,7 @@ Temperatures follow the G1's own screen: **the decimal is small and faint** (`25
 ## Layout
 
 - Phone first, single column, `space[4]` (16) side gutter. Design at 360 to 412dp wide.
-- **One primary action, at the bottom**, inside the thumb zone, at `size.controlLg` (60). Secondary actions sit above or beside it, never in the header.
+- One primary action, at the bottom, inside the thumb zone, at `size.controlLg` (60). Secondary actions sit above or beside it, never in the header.
 - Everything tappable is at least `size.touch` (48).
 - Sections are `space[6]` apart; card contents `space[3]`.
 - Cook, settings and confirmations are bottom sheets (`Sheet`, a React Native `Modal`), never new screens. There is no navigation library: the root switches on connection state.
@@ -82,13 +82,13 @@ Focus is a 2px solid `focus` ring with a 2px offset, at least 3:1 on every surfa
 
 ## Motion
 
-Motion explains data arriving. Nothing moves for decoration. Durations and curves are in `motion`.
+Motion shows data arriving and nothing else. Durations and curves are in `motion`.
 
-- **Heartbeat.** Each status report (every 2 s) pulses the Live pill's dot once. When reports stop, the pulse stops, and the pill turns amber.
-- **Readings ease.** The dial's arc and bead glide to each new reading over 700 ms (`motion.reading`, `motion.easeOut`). Numbers swap without animation, so they are always exact.
-- **The timer ticks locally** every second between reports, then resyncs to `curCookSec`.
-- **Sheets rise** 420 ms from the bottom over a 240 ms scrim fade. Segmented thumbs slide with a slight spring (380 ms).
-- **Presses** scale to 0.97 in 120 ms.
+- Each status report (every 2 s) pulses the Live pill's dot once, like a heartbeat. When reports stop, the pulse stops and the pill turns amber.
+- The dial's arc and bead glide to each new reading over 700 ms (`motion.reading`, `motion.easeOut`). Numbers swap without animation, so they are always exact.
+- The timer ticks locally every second between reports, then resyncs to `curCookSec`.
+- Sheets rise 420 ms from the bottom over a 240 ms scrim fade. Segmented thumbs slide with a slight spring (380 ms).
+- Presses scale to 0.97 in 120 ms.
 - With reduce motion on (`useReducedMotion()`), everything is instant and the heartbeat is a colour change only.
 
 ## Iconography
@@ -103,7 +103,7 @@ Drawings of the probe keep its real proportions (`PROBE` in `ProbeZones.tsx`): t
 
 ## The G1 illustration
 
-`DeviceG1` draws the G1 from rounded rectangles and circles so setup can show exactly what to look at: the docked probe, the LCD reading OFF, the OK key pulsing, the Bluetooth symbol flashing. Its LCD uses seven-segment glyphs with ghosted unlit segments like the real screen. It is a simplified drawing, not a reproduction: never place ThermoMaven's logo, artwork or product photos in Searly, and only show LCD states that have been seen on hardware. The G1 shows OFF while the probe is docked and switches to its temperature view (the reading, then Target | Ambient) the moment the probe comes out, whether or not a phone is connected. Never imply the screen waits for Searly.
+`DeviceG1` draws the G1 from rounded rectangles and circles so setup can show exactly what to look at: the docked probe, the LCD reading OFF, the OK key pulsing, the Bluetooth symbol flashing. Its LCD uses seven-segment glyphs with ghosted unlit segments like the real screen. It is a simplified drawing. Never place ThermoMaven's logo, artwork or product photos in Searly, and only show LCD states that have been seen on hardware. The G1 shows OFF while the probe is docked and switches to its temperature view (the reading, then Target | Ambient) the moment the probe comes out, whether or not a phone is connected. Never imply the screen waits for Searly.
 
 ## Screens
 
