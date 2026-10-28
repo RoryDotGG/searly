@@ -4,7 +4,8 @@ Reverse engineered on 2026-10-27 against a real G1 (firmware `appVersion` / `con
 and the official Android app `com.auros.thermomaven` (web bundle 1.9.10). Everything marked
 **[HW]** was observed on the device. **[APK]** means it was read from the app but not yet exercised.
 
-The whole thing works offline. No account, no cloud, no Wi-Fi. Reference client: [g1.py](../experiments/python/g1.py).
+Everything here works offline, without an account, the cloud or Wi-Fi. The reference client is
+[g1.py](../experiments/python/g1.py).
 
 ## Topology
 
@@ -253,7 +254,7 @@ Full probe object while cooking also carries `curRawAmbientTemperature` and a 7-
 
 ### Ending a cook
 
-So with the probe out of the dock, a cook can't be ended over BT. Treat the receipt as
+With the probe out of the dock, neither Stop nor Finish ends a cook over BT. Treat the receipt as
 unreliable for stop: watch `cookingState` in the next status reports. Docking the probe ends the
 cook (`charged`). Cook state lives on the G1 and survives BLE reconnects.
 
@@ -268,6 +269,6 @@ and launch it with `open`, or ship the real app as a signed bundle. Terminal.app
 1. Whether stop/finish take effect once the probe is in meat, after the target is reached
    (`ready`), or only on docking. Resting (action 4) with a rest target
 2. Smart mode state transitions and ETA under real heating
-2. Remaining `setting:modify` fields and their accepted values
-3. Behaviour of the multi-probe variant (`probesIconMap` key `C`) and alert pushes
-4. Whether `BT:user:unbind` fully releases the device
+3. Remaining `setting:modify` fields and their accepted values
+4. Behaviour of the multi-probe variant (`probesIconMap` key `C`) and alert pushes
+5. Whether `BT:user:unbind` fully releases the device

@@ -96,7 +96,7 @@ export default function LiveScreen(props: { g1: G1; unit: Unit; bar: Bar; onCook
   } else if (docked) {
     notice = (
       <Notice tone="info" icon="probe" title="Take the probe out to start a cook">
-        The G1 can only start a cook with the probe out of the dock.
+        Taking it out starts a Manual cook at the last target.
       </Notice>
     );
   } else if (probe) {
@@ -108,12 +108,9 @@ export default function LiveScreen(props: { g1: G1; unit: Unit; bar: Bar; onCook
       Try now
     </Button>
   ) : docked ? (
-    <>
-      <Button size="lg" block disabled>
-        Start cook
-      </Button>
-      <Caption>Available once the probe is out of the dock.</Caption>
-    </>
+    <Button size="lg" block disabled>
+      Start cook
+    </Button>
   ) : cooking ? (
     <>
       <Button size="lg" block icon="thermometer" onPress={props.onCook}>
