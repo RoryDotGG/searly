@@ -5,7 +5,7 @@ import { Animated, Text, View } from "react-native";
 import { Button } from "./controls";
 import Icon, { type IconName } from "./Icon";
 import { useBlink } from "./motion";
-import { font, motion, radius, useReducedMotion, useTheme, type Theme } from "./theme";
+import { font, motion, radius, space, useReducedMotion, useTheme, type Theme } from "./theme";
 
 export type PillState = "live" | "stale" | "reconnecting" | "searching" | "connecting" | "off" | "permission" | "error";
 
@@ -246,7 +246,7 @@ export function CookStatus(props: {
   const timed = props.state === "cooking" || props.state === "done";
   const sec = useElapsed(props.elapsed, timed && !!props.running);
   return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: 10 }}>
+    <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: space[3] }}>
       {props.state === "docked" ? (
         <Chip tone="signal" icon="bolt">
           Docked, charging
@@ -302,9 +302,8 @@ export function Notice(props: { tone?: Tone; title?: string; children?: ReactNod
       style={{
         flexDirection: "row",
         alignItems: "flex-start",
-        gap: 12,
-        paddingVertical: 14,
-        paddingHorizontal: 16,
+        gap: space[3],
+        padding: space[4],
         borderRadius: radius.md,
         backgroundColor: c.bg,
         boxShadow: c.shadow,
@@ -411,10 +410,8 @@ export function ApplyReceipt(props: {
     <View
       accessibilityLiveRegion="polite"
       style={{
-        gap: 12,
-        paddingTop: 14,
-        paddingHorizontal: 16,
-        paddingBottom: 16,
+        gap: space[3],
+        padding: space[4],
         borderRadius: radius.md,
         backgroundColor: t.surface,
         boxShadow: `inset 0 0 0 1px ${t.line}`,

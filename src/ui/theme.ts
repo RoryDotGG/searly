@@ -78,13 +78,11 @@ const shadows = {
   dark: {
     sheet: "0 -16px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06)",
     raised: "inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 28px rgba(0, 0, 0, 0.4)",
-    glowSear: "0 0 44px rgba(255, 100, 54, 0.42)",
     glowSignal: "0 0 0 6px rgba(92, 207, 238, 0.16)",
   },
   light: {
     sheet: "0 -10px 36px rgba(60, 28, 10, 0.16)",
     raised: "0 1px 2px rgba(60, 28, 10, 0.08), 0 10px 28px rgba(60, 28, 10, 0.08)",
-    glowSear: "0 8px 22px rgba(197, 58, 18, 0.28)",
     glowSignal: "0 0 0 6px rgba(10, 106, 137, 0.12)",
   },
 };
@@ -130,13 +128,7 @@ export const type = {
   bodyStrong: { fontFamily: font.sans600, fontSize: 15, lineHeight: 22 },
   label: { fontFamily: font.sans600, fontSize: 14, lineHeight: 18, letterSpacing: em(14, 0.005) },
   caption: { fontFamily: font.sans500, fontSize: 12, lineHeight: 16, letterSpacing: em(12, 0.01) },
-  overline: {
-    fontFamily: font.sans650,
-    fontSize: 11,
-    lineHeight: 14,
-    letterSpacing: em(11, 0.14),
-    textTransform: "uppercase",
-  },
+  overline: { fontFamily: font.sans600, fontSize: 12, lineHeight: 16 },
   mono: { fontFamily: font.mono400, fontSize: 12, lineHeight: 18 },
   monoStrong: { fontFamily: font.mono600, fontSize: 12, lineHeight: 18 },
 } satisfies Record<string, TextStyle>;

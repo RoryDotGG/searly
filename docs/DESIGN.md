@@ -34,7 +34,7 @@ Searly is dark first. `Char` (dark) is the default theme; `Daylight` is for brig
 
 Colour has three jobs, and each hue does exactly one:
 
-- **Ember is heat and action.** `sear` fills the one primary button per screen, with `onSear` text. `searText` marks ember text on surfaces. Glow (`shadow.glowSear`) only ever sits on something hot or the primary action.
+- **Ember is heat and action.** `sear` fills the one primary button per screen, with `onSear` text. `searText` marks ember text on surfaces. Nothing glows: the primary button is a flat fill.
 - **Cyan is the G1 talking.** `signal` means live, confirmed, applied, paired. It nods to the G1's backlit LCD. Never use it decoratively.
 - **Amber needs you.** `warn` is for stale data, Bluetooth off, permissions and mode switches that restart the timer.
 

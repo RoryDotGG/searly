@@ -12,7 +12,7 @@ import {
 } from "react-native";
 
 import Icon, { type IconName } from "./Icon";
-import { font, motion, radius, size, useReducedMotion, useTheme, type Theme } from "./theme";
+import { font, motion, radius, size, space, useReducedMotion, useTheme, type Theme } from "./theme";
 
 /** Presses scale to `to` in 120 ms; instant with reduce motion. */
 export function usePressScale(to: number) {
@@ -58,7 +58,7 @@ type Variant = "primary" | "secondary" | "quiet" | "danger" | "signal";
 function variantStyle(t: Theme, v: Variant, pressed: boolean): { bg: string; fg: string; shadow?: string } {
   switch (v) {
     case "primary":
-      return { bg: pressed ? t.searPressed : t.sear, fg: t.onSear, shadow: t.shadow.glowSear };
+      return { bg: pressed ? t.searPressed : t.sear, fg: t.onSear };
     case "secondary":
       return { bg: pressed ? t.surfaceRaised : "transparent", fg: t.ink, shadow: `inset 0 0 0 1.5px ${t.lineStrong}` };
     case "quiet":
@@ -268,7 +268,7 @@ export function SegmentedControl<V extends string>(props: {
 /** Children laid out as the design's centred full-screen state. */
 export function Centered(props: { children: ReactNode }) {
   return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 14, paddingHorizontal: 12 }}>
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: space[4], paddingHorizontal: space[3] }}>
       {props.children}
     </View>
   );

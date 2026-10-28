@@ -6,7 +6,7 @@ import type { Unit } from "../protocol/messages";
 import { usePressScale } from "./controls";
 import Icon from "./Icon";
 import Temp from "./Temp";
-import { font, radius, useTheme } from "./theme";
+import { font, radius, space, useTheme } from "./theme";
 
 /** Assumed limits until the official app's are known (docs/SPEC.md). */
 export const TARGET_RANGE = { C: [30, 100], F: [86, 212] } as const;
@@ -136,7 +136,7 @@ export default function TargetPicker(props: {
   };
 
   return (
-    <View style={{ gap: 18 }}>
+    <View style={{ gap: space[4] }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <StepKey icon="minus" label="Lower target by 1 degree" disabled={!!props.disabled || props.value <= min} onPress={() => set(props.value - 1)} />
         <View style={{ flex: 1, alignItems: "center" }}>
@@ -175,7 +175,6 @@ export default function TargetPicker(props: {
             marginLeft: -1.5,
             borderRadius: 2,
             backgroundColor: t.sear,
-            boxShadow: t.shadow.glowSear,
           }}
         />
         {/* The ends fade out, as the design's mask does. */}
