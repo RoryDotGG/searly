@@ -1,9 +1,9 @@
 # F-Droid
 
 [gg.rory.searly.yml](gg.rory.searly.yml) is the recipe for
-[fdroiddata](https://gitlab.com/fdroid/fdroiddata), as `metadata/gg.rory.searly.yml`. Keep it in
-`fdroid rewritemeta` form with no comments: fdroiddata CI fails on any rewritemeta diff. The notes
-live here instead.
+[fdroiddata](https://gitlab.com/fdroid/fdroiddata), as `metadata/gg.rory.searly.yml`. fdroiddata CI
+fails on any `fdroid rewritemeta` diff, and rewritemeta strips comments, so the file has none and
+these notes explain it.
 
 - Node 22 comes from nodejs.org in `sudo`, pinned by SHA-256.
 - `prebuild` generates `android/` and drops the debug signing config so Gradle emits an unsigned
@@ -18,6 +18,7 @@ live here instead.
 
 ## Releasing
 
-1. Bump `version` in `app.json` and `package.json`, and `android.versionCode` in `app.json`.
+1. Bump `version` in `app.json`, `package.json` and `package-lock.json`, and `android.versionCode`
+   in `app.json`.
 2. Add `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` (500 characters at most).
-3. Merge, then push a `v<version>` tag. F-Droid's checkupdates picks it up.
+3. Merge, then push a `v<version>` tag. F-Droid's checkupdates finds the tag and adds the build.
