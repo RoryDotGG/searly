@@ -106,6 +106,11 @@ builds have no network access and debug builds keep Metro.
 EAS Build makes the release APK (`eas build -p android --profile production`) and holds the signing
 key. `eas.json` keeps the version local: bump `android.versionCode` in `app.json` for each release.
 
+A minified local release build (debug-signed) passed on the Pixel: cold start live in 4.6 s, kill
+and reopen live in 3.9 s, target changed from 60 to 30 °C on a running Smart cook and confirmed by
+a report, switching it to Manual started a new cook (timer restarted, confirmed by a report), and
+volume Quiet then Mute both confirmed.
+
 ## Session state machine
 
 ```
