@@ -10,6 +10,9 @@ these notes explain it.
   release APK.
 - `rm -r node_modules/expo-modules-core/android/prebuilt` removes a prebuilt `.so` archive the
   scanner does not flag; with it gone, `-Pexpo.core.buildFromSource=true` builds from source.
+- F-Droid's build server only has JDK 21, so the second `sed` moves the JDK 17 toolchain pins in
+  React Native's Gradle plugin and Expo's KSP config to 21.
+- `commit` is the release's full hash, not the tag: fdroiddata review asks for that.
 - `scanignore`: the Gradle files only declare local Maven repos (deleting them breaks the build),
   and Hermes binaries are allowed by the inclusion policy.
 - `UpdateCheckData` reads the versions from `app.json`, because `android/` is generated.
