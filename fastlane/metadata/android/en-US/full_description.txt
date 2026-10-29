@@ -1,0 +1,24 @@
+Searly is a free, offline app for the ThermoMaven G1 wireless meat thermometer. It talks to the G1 directly over Bluetooth. You don't need an account or Wi-Fi, and nothing goes to the cloud or to analytics. Release builds don't even ask for internet access.
+
+Pair once, prop your phone up in the kitchen and read the core temperature from across the room.
+
+<b>What works</b>
+<ul>
+<li>Pair with a G1 without an account</li>
+<li>Reconnect without pressing a button</li>
+<li>Live probe temperature, five zones, ambient and battery levels</li>
+<li>Start a Manual or Smart cook and change the target</li>
+<li>Set the G1's volume</li>
+</ul>
+
+<b>Not yet</b>
+<ul>
+<li>Background monitoring and notifications</li>
+<li>Smart mode ETA and resting states</li>
+</ul>
+
+Pairing makes Searly the G1's owner. To go back to the official app, pair from there again.
+
+Tested with one G1 on firmware 25. Other ThermoMaven models (P1, P2, G2, G4) may work but are untested.
+
+Unofficial. Not affiliated with or endorsed by ThermoMaven, Typhur or Auros. "ThermoMaven" and "G1" are their trademarks and are used here only to say what Searly works with.

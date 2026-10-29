@@ -1,0 +1,1 @@
+First F-Droid release. Pair with a G1, read live probe, zone, ambient and battery readings, start Manual or Smart cooks and set the volume, all offline.
