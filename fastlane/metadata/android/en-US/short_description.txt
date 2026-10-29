@@ -1,0 +1,1 @@
+Read and control a ThermoMaven G1 meat thermometer offline over Bluetooth
