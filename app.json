@@ -11,13 +11,19 @@
     },
     "android": {
       "package": "gg.rory.searly",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0f0d0c",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_CONNECT"
+      ]
     },
     "plugins": [
       [
@@ -62,7 +68,14 @@
             "image": "./assets/splash-icon.png"
           }
         }
-      ]
-    ]
+      ],
+      "./plugins/withReleasePermissions"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "d1b46445-08c2-4055-9370-50f81f5f836e"
+      }
+    },
+    "owner": "rorydotgg"
   }
 }

@@ -96,8 +96,20 @@ fragments to a smaller MTU is untested (open question 2). If it does not, the Re
 Config plugin with `neverForLocation: true`: `BLUETOOTH_SCAN` and `BLUETOOTH_CONNECT` on Android
 12+, `ACCESS_FINE_LOCATION` capped at SDK 30 for older phones. Request at runtime with
 `PermissionsAndroid` before the first scan. The app itself needs no `INTERNET` permission, but the
-React Native template adds it and development builds need it for Metro. Removing it from release
-builds is a later task.
+React Native template adds it and development builds need it for Metro.
+[plugins/withReleasePermissions.js](../plugins/withReleasePermissions.js) writes a release-only
+manifest that removes `INTERNET`, `SYSTEM_ALERT_WINDOW` and the storage permissions, so release
+builds have no network access and debug builds keep Metro.
+
+### Release builds
+
+EAS Build makes the release APK (`eas build -p android --profile production`) and holds the signing
+key. `eas.json` keeps the version local: bump `android.versionCode` in `app.json` for each release.
+
+A minified local release build (debug-signed) passed on the Pixel: cold start live in 4.6 s, kill
+and reopen live in 3.9 s, target changed from 60 to 30 °C on a running Smart cook and confirmed by
+a report, switching it to Manual started a new cook (timer restarted, confirmed by a report), and
+volume Quiet then Mute both confirmed.
 
 ## Session state machine
 
