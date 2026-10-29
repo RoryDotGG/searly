@@ -43,7 +43,12 @@ one, a [device report](https://github.com/RoryDotGG/searly/issues/new?template=b
 
 ## Install
 
-There is no store release yet. Build it yourself:
+Each release's APK is on [GitHub Releases](https://github.com/RoryDotGG/searly/releases). To get
+updates, add `https://github.com/RoryDotGG/searly` to [Obtainium](https://obtainium.imranr.dev).
+F-Droid builds are signed with F-Droid's key, so you cannot update a GitHub install from F-Droid or
+the other way round without uninstalling first.
+
+Or build it yourself:
 
 1. Install Node 22.13 or later, and Android Studio for its SDK.
 2. Clone this repo and run `npm ci`.

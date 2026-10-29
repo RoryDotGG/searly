@@ -105,6 +105,8 @@ builds have no network access and debug builds keep Metro.
 
 EAS Build makes the release APK (`eas build -p android --profile production`) and holds the signing
 key. `eas.json` keeps the version local: bump `android.versionCode` in `app.json` for each release.
+Pushing a `v<version>` tag runs that build in [release.yml](../.github/workflows/release.yml) and
+attaches the APK to a GitHub release for Obtainium. It needs an `EXPO_TOKEN` repository secret.
 
 A minified local release build (debug-signed) passed on the Pixel: cold start live in 4.6 s, kill
 and reopen live in 3.9 s, target changed from 60 to 30 °C on a running Smart cook and confirmed by

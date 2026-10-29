@@ -1,0 +1,44 @@
+name: Release
+
+# A v<version> tag builds the APK on EAS and publishes it as a GitHub release, which Obtainium
+# tracks.
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Tag matches app.json
+        run: test "v$(jq -r .expo.version app.json)" = "$GITHUB_REF_NAME"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - uses: expo/expo-github-action@9da89d3617bb88139671bad31b09c65714c2ee06 # 9.0.1
+        with:
+          eas-version: 27.1.0
+          eas-cache: false
+          expo-cache: false
+          packager: npm
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - name: Build on EAS
+        run: |
+          url=$(eas build -p android --profile production --non-interactive --wait --json | jq -r '.[0].artifacts.buildUrl')
+          curl -fsSLo "searly-$GITHUB_REF_NAME.apk" "$url"
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="fastlane/metadata/android/en-US/changelogs/$(jq -r .expo.android.versionCode app.json).txt"
+          gh release create "$GITHUB_REF_NAME" "searly-$GITHUB_REF_NAME.apk" \
+            --repo "$GITHUB_REPOSITORY" --verify-tag --notes-file "$notes"

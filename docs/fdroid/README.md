@@ -24,4 +24,6 @@ these notes explain it.
 1. Bump `version` in `app.json`, `package.json` and `package-lock.json`, and `android.versionCode`
    in `app.json`.
 2. Add `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` (500 characters at most).
-3. Merge, then push a `v<version>` tag. F-Droid's checkupdates finds the tag and adds the build.
+3. Merge, then push a `v<version>` tag. F-Droid's checkupdates finds the tag and adds the build,
+   and [release.yml](../../.github/workflows/release.yml) builds the APK on EAS and publishes it as
+   a GitHub release with the changelog as its notes.
