@@ -1,0 +1,53 @@
+# Draft fdroiddata recipe. Copy to metadata/gg.rory.searly.yml in a fork of
+# https://gitlab.com/fdroid/fdroiddata and open a merge request; its CI pipeline is the real test.
+# Rehearsed locally with fdroidserver's scanner and Gradle, not yet on F-Droid's buildserver.
+Categories:
+  - Connectivity
+License: MIT
+AuthorName: Rory Durrant
+SourceCode: https://github.com/RoryDotGG/searly
+IssueTracker: https://github.com/RoryDotGG/searly/issues
+
+AutoName: Searly
+
+RepoType: git
+Repo: https://github.com/RoryDotGG/searly.git
+
+Builds:
+  - versionName: 0.1.0
+    versionCode: 1
+    commit: v0.1.0
+    sudo:
+      - apt-get update
+      - apt-get install -y xz-utils
+      - curl -Lo /tmp/node.tar.xz https://nodejs.org/dist/v22.23.4/node-v22.23.4-linux-x64.tar.xz
+      - echo "1805bcd35e6815559bd2eb97db438d3fdb0eb3a5e6a977b7c1badca76337e9ce  /tmp/node.tar.xz"
+        | sha256sum -c
+      - tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
+    output: android/app/build/outputs/apk/release/app-release-unsigned.apk
+    prebuild:
+      - npm ci --no-audit --no-fund
+      - EXPO_NO_TELEMETRY=1 CI=1 npx expo prebuild --platform android --no-install
+      - sed -i '/signingConfig signingConfigs.debug/d' android/app/build.gradle
+      # Prebuilt .so archive the scanner does not flag; removing it forces a source build
+      - rm -r node_modules/expo-modules-core/android/prebuilt
+    scanignore:
+      # Gradle files that merely declare local Maven repos; deleting them breaks the build
+      - node_modules/react-native/ReactAndroid/publish.gradle
+      - node_modules/react-native-safe-area-context/android/build.gradle
+      - node_modules/react-native-svg/android/build.gradle
+      - node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle
+      # Hermes binaries are allowed by the inclusion policy
+      - node_modules/hermes-compiler/hermesc/linux64-bin
+    scandelete:
+      - node_modules
+    build:
+      - cd android
+      - gradle assembleRelease -Pexpo.core.buildFromSource=true
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^v[0-9.]+$
+# android/ is generated, so read the versions from app.json
+UpdateCheckData: app.json|"versionCode":\s*(\d+)|app.json|"version":\s*"([^"]+)"
+CurrentVersion: 0.1.0
+CurrentVersionCode: 1
