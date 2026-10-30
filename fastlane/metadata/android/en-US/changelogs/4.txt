@@ -1,0 +1,1 @@
+Interface polish. Cyan now means the G1 has confirmed something: searching, sending and waiting stay grey until it answers. The docked and ready screens no longer say the same thing twice, buttons lose their decorative icons, and Settings, the probe card and long headings sit more evenly.
