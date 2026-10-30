@@ -78,12 +78,10 @@ const shadows = {
   dark: {
     sheet: "0 -16px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06)",
     raised: "inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 28px rgba(0, 0, 0, 0.4)",
-    glowSignal: "0 0 0 6px rgba(92, 207, 238, 0.16)",
   },
   light: {
     sheet: "0 -10px 36px rgba(60, 28, 10, 0.16)",
     raised: "0 1px 2px rgba(60, 28, 10, 0.08), 0 10px 28px rgba(60, 28, 10, 0.08)",
-    glowSignal: "0 0 0 6px rgba(10, 106, 137, 0.12)",
   },
 };
 
@@ -120,7 +118,7 @@ const em = (size: number, e: number) => size * e;
 
 /** The type scale. Colours are applied by the caller. */
 export const type = {
-  titleLg: { fontFamily: font.titleLg, fontSize: 36, lineHeight: 38, letterSpacing: em(36, -0.025) },
+  titleLg: { fontFamily: font.titleLg, fontSize: 36, lineHeight: 38, letterSpacing: em(36, -0.012) },
   title: { fontFamily: font.title, fontSize: 26, lineHeight: 30, letterSpacing: em(26, -0.018) },
   heading: { fontFamily: font.heading, fontSize: 19, lineHeight: 24, letterSpacing: em(19, -0.008) },
   bodyLg: { fontFamily: font.sans400, fontSize: 17, lineHeight: 25 },

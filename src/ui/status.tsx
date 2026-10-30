@@ -112,7 +112,7 @@ export function ConnectionPill(props: { state: PillState; seconds?: number | und
 
 /**
  * A four-bar battery glyph like the G1's. 20% or less turns amber. Charging bars are cyan and the
- * next bar blinks. With no level (a docked probe does not report one) it says Charging.
+ * next bar blinks. With no level (a docked probe does not report one) it says Charging, with no icon.
  */
 export function Battery(props: { label: string; level: number | undefined; charging?: boolean }) {
   const t = useTheme();
@@ -181,7 +181,7 @@ export function Battery(props: { label: string; level: number | undefined; charg
           {lvl}%
         </Text>
       )}
-      {props.charging ? <Icon name="bolt" size={14} color={t.inkMuted} /> : null}
+      {props.charging && lvl !== undefined ? <Icon name="bolt" size={14} color={t.inkMuted} /> : null}
       {lvl === undefined ? (
         <Text style={{ fontFamily: font.sans500, fontSize: 12, lineHeight: 16, color: t.inkMuted }}>Charging</Text>
       ) : null}
@@ -221,8 +221,8 @@ function Chip(props: { tone: "plain" | "sear" | "signal"; icon?: IconName; child
         flexDirection: "row",
         alignItems: "center",
         gap: 6,
-        height: 30,
-        paddingHorizontal: 12,
+        height: 32,
+        paddingHorizontal: space[3],
         borderRadius: radius.pill,
         backgroundColor: c.bg,
         boxShadow: "shadow" in c ? c.shadow : undefined,
@@ -234,7 +234,10 @@ function Chip(props: { tone: "plain" | "sear" | "signal"; icon?: IconName; child
   );
 }
 
-/** The cook state chip and elapsed timer above the dial. */
+/**
+ * The cook state chip and elapsed timer above the dial. Docked shows no chip: the dial already says
+ * Docked. The row keeps its height either way, so the dial never moves.
+ */
 export function CookStatus(props: {
   state: "cooking" | "done" | "docked" | "idle";
   mode?: "manual" | "smart";
@@ -246,12 +249,10 @@ export function CookStatus(props: {
   const timed = props.state === "cooking" || props.state === "done";
   const sec = useElapsed(props.elapsed, timed && !!props.running);
   return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: space[3] }}>
-      {props.state === "docked" ? (
-        <Chip tone="signal" icon="bolt">
-          Docked, charging
-        </Chip>
-      ) : props.state === "idle" ? (
+    <View
+      style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: space[3], minHeight: 32 }}
+    >
+      {props.state === "docked" ? null : props.state === "idle" ? (
         <Chip tone="plain">Ready to cook</Chip>
       ) : props.state === "done" ? (
         <Chip tone="signal" icon="check">{`${mode} · At target`}</Chip>
@@ -286,7 +287,7 @@ const NOTICE_ICON: Record<Tone, IconName> = { info: "info", warn: "alert", dange
  * A tinted message with an icon disc. The title says what is true; the body says what happens
  * next. At most one per screen. Never a coloured left border.
  */
-export function Notice(props: { tone?: Tone; title?: string; children?: ReactNode; icon?: IconName; action?: ReactNode }) {
+export function Notice(props: { tone?: Tone; title?: string; children?: ReactNode; icon?: IconName }) {
   const t = useTheme();
   const tone = props.tone ?? "info";
   const c = {
@@ -317,7 +318,6 @@ export function Notice(props: { tone?: Tone; title?: string; children?: ReactNod
         {props.children ? (
           <Text style={{ fontFamily: font.sans400, fontSize: 14, lineHeight: 20, color: t.inkMuted, marginTop: 2 }}>{props.children}</Text>
         ) : null}
-        {props.action ? <View style={{ marginTop: 10 }}>{props.action}</View> : null}
       </View>
     </View>
   );
@@ -332,11 +332,12 @@ const STAGE_TITLE: Record<Stage, string> = {
   failed: "No reply from the G1",
 };
 
-function ReceiptNode(props: { state: "" | "done" | "active" | "fail" }) {
+/** `done` is the colour of a passed step: grey until the G1's report confirms, then cyan. */
+function ReceiptNode(props: { state: "" | "done" | "active" | "fail"; done: string }) {
   const t = useTheme();
   const blink = useBlink(1200, props.state === "active");
-  const bg = props.state === "done" ? t.signal : props.state === "fail" ? t.danger : "transparent";
-  const ring = props.state === "active" ? t.signal : props.state === "" ? t.lineStrong : undefined;
+  const bg = props.state === "done" ? props.done : props.state === "fail" ? t.danger : "transparent";
+  const ring = props.state === "active" ? t.ink : props.state === "" ? t.lineStrong : undefined;
   return (
     <Animated.View
       style={{
@@ -351,7 +352,7 @@ function ReceiptNode(props: { state: "" | "done" | "active" | "fail" }) {
   );
 }
 
-function ReceiptWire(props: { filled: boolean }) {
+function ReceiptWire(props: { filled: boolean; colour: string }) {
   const t = useTheme();
   const reduced = useReducedMotion();
   const fill = useRef(new Animated.Value(props.filled ? 1 : 0)).current;
@@ -365,7 +366,7 @@ function ReceiptWire(props: { filled: boolean }) {
       <Animated.View
         style={{
           height: 2,
-          backgroundColor: t.signal,
+          backgroundColor: props.colour,
           width: fill.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
         }}
       />
@@ -375,7 +376,7 @@ function ReceiptWire(props: { filled: boolean }) {
 
 /**
  * A command going from sent, to acknowledged by the G1, to applied in its next status report.
- * Only applied turns cyan, and only once a report shows the new value.
+ * Only applied turns cyan, and only once a report shows the new value: until then the steps are grey.
  */
 export function ApplyReceipt(props: {
   stage: Stage;
@@ -386,6 +387,7 @@ export function ApplyReceipt(props: {
 }) {
   const t = useTheme();
   const failed = props.stage === "failed";
+  const done = props.stage === "applied" ? t.signal : t.inkMuted;
   const at = failed ? (props.failedAt ?? 1) : STAGES.indexOf(props.stage as (typeof STAGES)[number]);
   const node = (i: number) =>
     failed && i === at ? "fail" : i < at || (i === at && props.stage === "applied") ? "done" : i === at ? "active" : "";
@@ -417,18 +419,18 @@ export function ApplyReceipt(props: {
         boxShadow: `inset 0 0 0 1px ${t.line}`,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}>
         <Icon name={icon} size={20} color={iconColour} />
         <Text style={{ flex: 1, fontFamily: font.sans600, fontSize: 15, lineHeight: 20, color: t.ink }}>
           {props.title ?? STAGE_TITLE[props.stage]}
         </Text>
       </View>
-      <View importantForAccessibility="no-hide-descendants" style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-        <ReceiptNode state={node(0)} />
-        <ReceiptWire filled={at > 0} />
-        <ReceiptNode state={node(1)} />
-        <ReceiptWire filled={at > 1} />
-        <ReceiptNode state={node(2)} />
+      <View importantForAccessibility="no-hide-descendants" style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}>
+        <ReceiptNode state={node(0)} done={done} />
+        <ReceiptWire filled={at > 0} colour={done} />
+        <ReceiptNode state={node(1)} done={done} />
+        <ReceiptWire filled={at > 1} colour={done} />
+        <ReceiptNode state={node(2)} done={done} />
       </View>
       <View importantForAccessibility="no-hide-descendants" style={{ flexDirection: "row" }}>
         {label("Sent", 0, "left")}
@@ -454,14 +456,14 @@ function RetryBar(props: { s: number; state: "" | "done" | "now" }) {
   const blink = useBlink(1400, props.state === "now");
   const max = Math.max(...RETRY_STEPS);
   return (
-    <View style={{ flex: 1, alignItems: "center", gap: 6 }}>
+    <View style={{ flex: 1, alignItems: "center", gap: space[2] }}>
       <Animated.View style={{ opacity: blink }}>
         <View
           style={{
             width: 10,
             height: 6 + (props.s / max) * 30,
             borderRadius: 5,
-            backgroundColor: props.state === "now" ? t.signal : t.lineStrong,
+            backgroundColor: props.state === "now" ? t.ink : t.lineStrong,
             opacity: props.state === "" ? 0.5 : 1,
           }}
         />
@@ -471,18 +473,21 @@ function RetryBar(props: { s: number; state: "" | "done" | "now" }) {
           fontFamily: props.state === "now" ? font.sans650 : font.sans500,
           fontSize: 11,
           lineHeight: 11,
-          color: props.state === "now" ? t.signal : t.inkFaint,
+          color: props.state === "now" ? t.ink : t.inkFaint,
           fontVariant: ["tabular-nums"],
           includeFontPadding: false,
         }}
       >
-        {props.s}s
+        {`${props.s} s`}
       </Text>
     </View>
   );
 }
 
-/** The reconnect schedule as bars: 1, 2, 5, 10 s, then every 10 s. `attempt` is zero-based. */
+/**
+ * The reconnect schedule as bars: 1, 2, 5, 10 s, then every 10 s. `attempt` is zero-based. Grey
+ * throughout: nothing here is the G1 answering.
+ */
 export function RetrySchedule(props: { attempt: number }) {
   const t = useTheme();
   const at = props.attempt;
@@ -490,7 +495,7 @@ export function RetrySchedule(props: { attempt: number }) {
     <View
       accessible
       accessibilityLabel={`Reconnect attempt ${at + 1}. Retries after 1, 2, 5 and 10 seconds, then every 10 seconds.`}
-      style={{ flexDirection: "row", alignItems: "flex-end", gap: 6 }}
+      style={{ flexDirection: "row", alignItems: "flex-end", gap: space[2] }}
     >
       {RETRY_STEPS.map((s, i) => (
         <RetryBar key={i} s={s} state={i < at ? "done" : i === at ? "now" : ""} />

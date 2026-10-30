@@ -33,7 +33,7 @@ export function Welcome(props: { onPair: () => void; onDebug: () => void }) {
     <Screen
       footer={
         <>
-          <Button size="lg" block iconRight="chevron-right" onPress={props.onPair}>
+          <Button size="lg" block onPress={props.onPair}>
             Pair a G1
           </Button>
           <Caption>Free and open source. MIT licence.</Caption>
@@ -46,7 +46,9 @@ export function Welcome(props: { onPair: () => void; onDebug: () => void }) {
       <View style={{ marginTop: 4, marginBottom: -8 }}>
         <HeatDial core={57.6} target={65} start={5} unit="C" state="cooking" size={236} />
       </View>
-      <Text style={[type.titleLg, { color: t.ink }]}>{"Read your G1 from across the room"}</Text>
+      <Text accessibilityRole="header" textBreakStrategy="balanced" style={[type.titleLg, { color: t.ink }]}>
+        Read your G1 from across the room
+      </Text>
       <Text style={[type.bodyLg, { color: t.inkMuted }]}>
         Searly talks to your ThermoMaven G1 directly over Bluetooth. It needs no account and collects no data.
       </Text>
@@ -160,7 +162,7 @@ export function PairSearching(props: { found: string | null; onCancel: () => voi
     >
       <Centered>
         <Radar />
-        <Text accessibilityRole="header" style={[type.title, { color: t.ink, textAlign: "center" }]}>
+        <Text accessibilityRole="header" textBreakStrategy="balanced" style={[type.title, { color: t.ink, textAlign: "center" }]}>
           {props.found ? "Connecting to your G1" : "Looking for your G1"}
         </Text>
         <Text style={[type.bodyLg, { color: t.inkMuted, textAlign: "center" }]}>
@@ -203,8 +205,8 @@ export function PressOk(props: { since: number; onCancel: () => void; onDebug: (
           accessibilityLabel={`${left} seconds left`}
           style={{
             position: "absolute",
-            top: 14,
-            right: 14,
+            top: space[3],
+            right: space[3],
             flexDirection: "row",
             alignItems: "center",
             gap: 8,
@@ -226,7 +228,7 @@ export function PressOk(props: { since: number; onCancel: () => void; onDebug: (
       <Text style={[type.body, { color: t.inkMuted }]}>
         Your G1 is asking whether to trust this phone. Press OK once. The Bluetooth symbol on its screen flashes while it waits.
       </Text>
-      <InlineNote lead={<Spinner color={t.signal} size={14} />}>Waiting for the G1</InlineNote>
+      <InlineNote lead={<Spinner color={t.inkMuted} size={14} />}>Waiting for the G1</InlineNote>
     </Screen>
   );
 }
@@ -250,7 +252,7 @@ export function Paired(props: { name: string | null; onContinue: () => void }) {
         <Text style={[type.bodyLg, { color: t.inkMuted, textAlign: "center" }]}>
           Your G1 trusts this phone. Next time, Searly connects without you touching the G1.
         </Text>
-        <View style={{ alignSelf: "stretch", marginTop: 10 }}>
+        <View style={{ alignSelf: "stretch", marginTop: space[2] }}>
           <ListGroup>
             <ListRow
               icon="bluetooth"
