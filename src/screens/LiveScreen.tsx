@@ -9,7 +9,8 @@ import { Button } from "../ui/controls";
 import HeatDial, { type DialState } from "../ui/HeatDial";
 import { Caption, Screen, Tile } from "../ui/layout";
 import ProbeZones from "../ui/ProbeZones";
-import { Battery, CookStatus, Notice, RetrySchedule, type PillState } from "../ui/status";
+import { Battery, CookStatus, Notice, type PillState } from "../ui/status";
+import { space } from "../ui/theme";
 import type { Bar } from "./RecoveryScreens";
 
 const LOW_BATTERY = 20;
@@ -85,11 +86,7 @@ export default function LiveScreen(props: { g1: G1; unit: Unit; bar: Bar; onCook
           ? "Showing the last reading. Try now reconnects to the G1."
           : "Showing the last reading. Searly is connecting now.";
     notice = (
-      <Notice
-        tone="warn"
-        title={`No data for ${Math.round(g1.silentFor / 1000)} s`}
-        {...(p.kind === "reconnecting" ? { action: <RetrySchedule attempt={Math.min(5, p.attempt - 1)} /> } : {})}
-      >
+      <Notice tone="warn" title={`No data for ${Math.round(g1.silentFor / 1000)} s`}>
         {body}
       </Notice>
     );
@@ -113,13 +110,13 @@ export default function LiveScreen(props: { g1: G1; unit: Unit; bar: Bar; onCook
     </Button>
   ) : cooking ? (
     <>
-      <Button size="lg" block icon="thermometer" onPress={props.onCook}>
+      <Button size="lg" block onPress={props.onCook}>
         Change target
       </Button>
       <Caption>To end the cook, put the probe back in the dock.</Caption>
     </>
   ) : (
-    <Button size="lg" block icon="thermometer" onPress={props.onCook}>
+    <Button size="lg" block onPress={props.onCook}>
       Start cook
     </Button>
   );
@@ -128,7 +125,7 @@ export default function LiveScreen(props: { g1: G1; unit: Unit; bar: Bar; onCook
     <Screen {...props.bar} footer={footer}>
       <View style={{ flex: 1 }} onLayout={(e) => setBodyH(e.nativeEvent.layout.height)}>
         <View
-          style={{ gap: 16 }}
+          style={{ gap: space[4] }}
           onLayout={(e) => {
             // 288 by default, 256 when the screen is too short for everything.
             const h = e.nativeEvent.layout.height;
@@ -137,7 +134,7 @@ export default function LiveScreen(props: { g1: G1; unit: Unit; bar: Bar; onCook
             else if (dial === 256 && h + 32 <= bodyH) setDial(288);
           }}
         >
-          <View style={{ alignItems: "center", paddingTop: 2 }}>
+          <View style={{ alignItems: "center" }}>
             <CookStatus
               state={docked ? "docked" : cooking ? (done ? "done" : "cooking") : "idle"}
               mode={probe?.cookingMode === "smart" ? "smart" : "manual"}
@@ -148,7 +145,7 @@ export default function LiveScreen(props: { g1: G1; unit: Unit; bar: Bar; onCook
           <HeatDial state={dialState} core={core} target={target} start={start} unit={unit} size={dial} />
           {notice}
           {!stale && !docked && probe ? (
-            <Tile style={{ paddingTop: 12, paddingBottom: 4 }}>
+            <Tile style={{ paddingVertical: space[3] }}>
               <ProbeZones
                 zones={(probe.areaTemperature ?? []).map((v) => fromTenthsF(v, unit))}
                 ambient={conv(probe.curAmbientTemperature)}
@@ -160,7 +157,7 @@ export default function LiveScreen(props: { g1: G1; unit: Unit; bar: Bar; onCook
             </Tile>
           ) : null}
           {stale ? null : (
-            <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 4 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: space[1] }}>
               <Battery label="Probe" level={probe?.batteryValue} charging={docked} />
               <Battery label="G1" level={report.batteryValue} />
             </View>

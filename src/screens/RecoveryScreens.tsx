@@ -6,7 +6,7 @@ import { Button, Centered } from "../ui/controls";
 import { Caption, Disc, Screen } from "../ui/layout";
 import { useLoop } from "../ui/motion";
 import { RetrySchedule } from "../ui/status";
-import { font, type, useTheme } from "../ui/theme";
+import { font, space, type, useTheme } from "../ui/theme";
 
 /** The shared header: the G1's name (or the pairing title), the connection pill and settings. */
 export interface Bar {
@@ -19,7 +19,7 @@ export interface Bar {
 function Title(props: { children: string }) {
   const t = useTheme();
   return (
-    <Text accessibilityRole="header" style={[type.title, { color: t.ink, textAlign: "center" }]}>
+    <Text accessibilityRole="header" textBreakStrategy="balanced" style={[type.title, { color: t.ink, textAlign: "center" }]}>
       {props.children}
     </Text>
   );
@@ -37,7 +37,7 @@ export function BluetoothOff(props: { bar: Bar; paired: boolean; onTurnOn: () =>
       {...props.bar}
       footer={
         <>
-          <Button size="lg" block icon="bluetooth" onPress={props.onTurnOn}>
+          <Button size="lg" block onPress={props.onTurnOn}>
             Turn on Bluetooth
           </Button>
           <Caption>Or switch it on from quick settings.</Caption>
@@ -60,7 +60,7 @@ export function BluetoothOff(props: { bar: Bar; paired: boolean; onTurnOn: () =>
 function Step(props: { n: number; children: string }) {
   const t = useTheme();
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: space[3] }}>
       <View
         style={{
           width: 28,
@@ -107,7 +107,7 @@ export function Permission(props: { bar: Bar; settings: boolean; onFix: () => vo
         <Title>Allow Nearby devices</Title>
         <Lead>Searly needs this to find and talk to your G1. It never uses your location.</Lead>
         {props.settings ? (
-          <View style={{ alignSelf: "stretch", gap: 10, marginTop: 12 }}>
+          <View style={{ alignSelf: "stretch", gap: space[3], marginTop: space[3] }}>
             <Step n={1}>Open Settings</Step>
             <Step n={2}>Permissions</Step>
             <Step n={3}>Nearby devices, then Allow</Step>
@@ -131,7 +131,7 @@ function RadarRing(props: { delay: number }) {
         height: 200,
         borderRadius: 100,
         borderWidth: 1.5,
-        borderColor: t.signal,
+        borderColor: t.lineStrong,
         opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.8, 0] }),
         transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] }) }],
       }}
@@ -139,14 +139,14 @@ function RadarRing(props: { delay: number }) {
   );
 }
 
-/** Rings spreading from a Bluetooth disc: Searly is looking for the G1. */
+/** Rings spreading from a Bluetooth disc: Searly is looking for the G1. Grey until the G1 answers. */
 export function Radar() {
   return (
     <View style={{ width: 200, height: 200, alignItems: "center", justifyContent: "center" }}>
       <RadarRing delay={0} />
       <RadarRing delay={1000} />
       <RadarRing delay={2000} />
-      <Disc tone="signal" icon="bluetooth" size={72} ring={false} />
+      <Disc tone="info" icon="bluetooth" size={72} />
     </View>
   );
 }
@@ -182,7 +182,7 @@ export function Searching(props: {
         <Radar />
         <Title>{props.connecting ? "Connecting to your G1" : "Looking for your G1"}</Title>
         <Lead>Keep it switched on and within a few metres of this phone.</Lead>
-        <View style={{ alignSelf: "stretch", marginTop: 16 }}>
+        <View style={{ alignSelf: "stretch", marginTop: space[4] }}>
           <RetrySchedule attempt={Math.min(5, Math.max(0, props.attempt - 1))} />
         </View>
         <Caption>{caption}</Caption>

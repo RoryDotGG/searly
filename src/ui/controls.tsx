@@ -73,6 +73,7 @@ function variantStyle(t: Theme, v: Variant, pressed: boolean): { bg: string; fg:
 /**
  * Pill buttons. One primary per screen, at the bottom. Labels start with a verb and include the
  * value when there is one. A disabled button always has a caption or notice nearby saying why.
+ * `icon` is for retrying and the danger action only (docs/DESIGN.md, Iconography).
  */
 export function Button(props: {
   children: string;
@@ -81,7 +82,6 @@ export function Button(props: {
   size?: "md" | "lg";
   block?: boolean;
   icon?: IconName;
-  iconRight?: IconName;
   loading?: boolean;
   disabled?: boolean;
 }) {
@@ -110,7 +110,7 @@ export function Button(props: {
             justifyContent: "center",
             gap: 8,
             minHeight: lg ? size.controlLg : size.control,
-            paddingHorizontal: variant === "quiet" ? 14 : lg ? 28 : 22,
+            paddingHorizontal: variant === "quiet" ? space[4] : lg ? space[6] : space[5],
             borderRadius: radius.pill,
             backgroundColor: disabled ? "transparent" : v.bg,
             boxShadow: disabled ? `inset 0 0 0 1.5px ${t.line}` : v.shadow,
@@ -134,7 +134,6 @@ export function Button(props: {
             >
               {props.children}
             </Text>
-            {props.iconRight ? <Icon name={props.iconRight} size={20} color={fg} /> : null}
           </>
         );
       }}
@@ -249,8 +248,8 @@ export function SegmentedControl<V extends string>(props: {
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
-              gap: 6,
-              paddingHorizontal: 10,
+              gap: space[2],
+              paddingHorizontal: space[3],
               borderRadius: radius.pill,
             }}
           >

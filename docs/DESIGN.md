@@ -35,7 +35,7 @@ Searly is dark first. `Char` (dark) is the default theme; `Daylight` is for brig
 Each hue has one job:
 
 - Ember is heat and action. `sear` fills the one primary button per screen, with `onSear` text. `searText` marks ember text on surfaces. Nothing glows: the primary button is a flat fill.
-- Cyan is the G1 reporting back. `signal` means live, confirmed, applied or paired, and echoes the G1's backlit LCD. Never use it as decoration.
+- Cyan is the G1 reporting back. `signal` means live, confirmed, applied or paired, and echoes the G1's backlit LCD. Never use it as decoration. While Searly is still waiting (looking for the G1, sending, a receipt without a report yet), everything is grey: the radar, the spinners, the retry schedule and the steps of the apply receipt. Cyan arrives with the G1's answer.
 - Amber needs the person's attention. `warn` is for stale data, Bluetooth off, permissions and mode switches that restart the timer.
 
 `danger` is rare: Forget this G1, pairing declined, no reply. It always comes with an icon and a word, never colour alone, because it sits close to ember in hue. Success and danger are set apart by hue family (cyan against rose), not by red against green.
@@ -95,6 +95,8 @@ Motion shows data arriving and nothing else. Durations and curves are in `motion
 
 A custom 24px stroke set ([src/ui/Icon.tsx](../src/ui/Icon.tsx)), 1.75px strokes with round caps and joins, drawn for Searly with `react-native-svg`. Names: `bluetooth`, `bluetooth-off`, `bolt`, `probe`, `dock`, `thermometer`, `timer`, `volume`, `volume-low`, `volume-quiet`, `mute`, `sliders`, `check`, `check-circle`, `alert`, `info`, `close`, `chevron-right`, `chevron-down`, `plus`, `minus`, `refresh`, `unlink`, `terminal`, `cloud-off`, `phone`, `pencil`, `copy`, `search`, `settings`, `lock`. Icons take their colour from the caller. No emoji anywhere.
 
+Buttons are words. Only two kinds carry an icon: retrying (`refresh`) and the danger action (`unlink`), which always pairs an icon with its word. An icon that repeats the label or the disc above it (a thermometer on Start cook, Bluetooth on Turn on Bluetooth) is left out. The same goes for a word that already says it: Charging needs no bolt.
+
 ## The probe
 
 The probe has six sensors. Five sit inside the shaft at evenly spaced points: **T1** just behind the tip, **T5** at the neck where the shaft thickens. The G1 reports them tip first in `areaTemperature`, and the lowest is the core (`curTemperature`). The sixth, **ambient**, is in the cap end, which stays outside the food, so it reads the oven or grill air (`curAmbientTemperature`).
@@ -114,7 +116,7 @@ The root component switches on the session state from the [spec](SPEC.md). Each 
 | No identity | Welcome, then pairing steps 1 and 2 | Pair a G1, Start pairing |
 | Pairing, waiting for OK | Step 2 with a 35 s countdown | Cancel |
 | Scanning, connecting, trusting | Searching, with the retry schedule | Try now |
-| Live, probe docked | Live, dial dotted, "Docked, charging" | Start cook (disabled with a reason) |
+| Live, probe docked | Live, dial dotted, "Docked" in the dial and no cook chip | Start cook (disabled with a reason) |
 | Live, probe out, no cook | Ready: live reading, neutral sensors | Start cook |
 | Live, cooking | Core, degrees to go, sensors on the heat ramp | Change target |
 | Live, core at or over target | At target: ring closed, chip cyan | Change target |
@@ -122,7 +124,7 @@ The root component switches on the session state from the [spec](SPEC.md). Each 
 | Needs re-pair (cmdError 11) | Not recognised | Pair again |
 | Bluetooth off, permission denied | Recovery states | Turn on Bluetooth, Open Settings |
 
-The live screen holds, top to bottom: the cook chip and timer, the heat dial, at most one notice, the probe card (sensors and ambient), and the batteries. Target is read from the dial and changed with the bottom button; ambient is read from the probe card.
+The live screen holds, top to bottom: the cook chip and timer, the heat dial, at most one notice, the probe card (sensors and ambient), and the batteries. Target is read from the dial and changed with the bottom button; ambient is read from the probe card. When the dial already says something, the chip does not repeat it: docked shows no chip, and the ready dial has no line under the reading because the chip says Ready to cook. The chip row keeps its height either way, so the dial never moves.
 
 When the probe or the G1 is at 20% battery or less, a warn notice names which one and its level, under the dial. Only one notice shows at a time: no data beats low battery.
 

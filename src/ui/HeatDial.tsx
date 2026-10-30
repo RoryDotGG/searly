@@ -135,7 +135,7 @@ export default function HeatDial(props: {
 
       {state === "docked" ? (
         <View style={{ alignItems: "center", gap: 6 }}>
-          <Icon name="bolt" size={34} strokeWidth={1.5} color={t.signal} />
+          <Icon name="bolt" size={34} strokeWidth={1.5} color={t.inkMuted} />
           <Text style={[type.title, { color: t.ink }]}>Docked</Text>
           <Text style={sub}>Charging in the G1</Text>
         </View>
@@ -147,9 +147,7 @@ export default function HeatDial(props: {
           <View style={grey}>
             <Temp value={core} unit={props.unit} size="hero" unitLabel="degree" />
           </View>
-          {state === "ready" ? (
-            <Text style={sub}>No cook running</Text>
-          ) : done ? (
+          {state === "ready" ? null : done ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <Icon name="check" size={16} color={t.signal} />
               <Text style={[sub, { fontFamily: font.sans600, color: t.signal }]}>At target</Text>

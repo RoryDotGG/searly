@@ -7,7 +7,7 @@ import type { G1 } from "../useG1";
 import { Button, SegmentedControl, Spinner } from "../ui/controls";
 import Icon from "../ui/Icon";
 import { Disc, InlineNote, ListGroup, ListRow, Sheet } from "../ui/layout";
-import { font, type, useTheme } from "../ui/theme";
+import { font, space, type, useTheme } from "../ui/theme";
 
 const UNITS = [
   { value: "C", label: "°C" },
@@ -107,9 +107,9 @@ export default function SettingsSheet(props: { g1: G1; unit: Unit; onUnit: (unit
   const note = !live ? (
     <InlineNote lead={<Icon name="info" size={18} color={t.inkFaint} />}>Connect to the G1 to change its volume.</InlineNote>
   ) : stage === "sending" ? (
-    <InlineNote lead={<Spinner color={t.signal} size={14} />}>Sending to the G1</InlineNote>
+    <InlineNote lead={<Spinner color={t.inkMuted} size={14} />}>Sending to the G1</InlineNote>
   ) : stage === "acknowledged" ? (
-    <InlineNote lead={<Spinner color={t.signal} size={14} />}>G1 acknowledged, checking it applied</InlineNote>
+    <InlineNote lead={<Spinner color={t.inkMuted} size={14} />}>G1 acknowledged, checking it applied</InlineNote>
   ) : stage === "failed" ? (
     <InlineNote lead={<Icon name="alert" size={18} color={t.danger} />} color={t.danger}>
       Not applied. The G1 keeps its last volume.
@@ -146,23 +146,19 @@ export default function SettingsSheet(props: { g1: G1; unit: Unit; onUnit: (unit
       {confirm ? (
         <ForgetConfirm />
       ) : (
-        <>
-          <ListGroup title="G1 volume">
-            <View style={{ padding: 6 }}>
-              <SegmentedControl
-                label="G1 volume"
-                options={VOLUMES}
-                value={pending ?? g1.report?.volume}
-                onChange={(v) => void setVolume(v)}
-                disabled={!live || busy}
-              />
-            </View>
-            <View style={{ paddingTop: 2, paddingHorizontal: 16, paddingBottom: 12 }}>{note}</View>
+        <View style={{ gap: space[6] }}>
+          <ListGroup title="G1 volume" bare>
+            <SegmentedControl
+              label="G1 volume"
+              options={VOLUMES}
+              value={pending ?? g1.report?.volume}
+              onChange={(v) => void setVolume(v)}
+              disabled={!live || busy}
+            />
+            <View style={{ paddingHorizontal: space[1] }}>{note}</View>
           </ListGroup>
-          <ListGroup title="Units in Searly" footnote="The G1’s own screen keeps its unit.">
-            <View style={{ padding: 6 }}>
-              <SegmentedControl label="Units" options={UNITS} value={props.unit} onChange={props.onUnit} />
-            </View>
+          <ListGroup title="Units in Searly" footnote="The G1’s own screen keeps its unit." bare>
+            <SegmentedControl label="Units" options={UNITS} value={props.unit} onChange={props.onUnit} />
           </ListGroup>
           <ListGroup
             title="This G1"
@@ -177,7 +173,7 @@ export default function SettingsSheet(props: { g1: G1; unit: Unit; onUnit: (unit
               onPress={() => setConfirm(true)}
             />
           </ListGroup>
-        </>
+        </View>
       )}
     </Sheet>
   );

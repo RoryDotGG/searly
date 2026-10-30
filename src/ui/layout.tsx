@@ -34,9 +34,8 @@ export function Screen(props: {
             justifyContent: "space-between",
             gap: 8,
             minHeight: 56,
-            paddingTop: 6,
-            paddingBottom: 6,
-            paddingRight: 8,
+            paddingVertical: space[1],
+            paddingRight: space[2],
             paddingLeft: space[4],
           }}
         >
@@ -172,17 +171,24 @@ export function Sheet(props: {
   );
 }
 
-/** A titled group of list rows with an optional one-sentence footnote. */
-export function ListGroup(props: { title?: string; footnote?: string; children: ReactNode }) {
+/**
+ * A titled group of list rows with an optional one-sentence footnote. `bare` leaves out the card,
+ * for a control that already has its own track, such as the segmented control.
+ */
+export function ListGroup(props: { title?: string; footnote?: string; bare?: boolean; children: ReactNode }) {
   const t = useTheme();
   return (
-    <View style={{ gap: 8 }}>
-      {props.title ? <Text style={[type.overline, { color: t.inkMuted, marginHorizontal: 4 }]}>{props.title}</Text> : null}
-      <View style={{ borderRadius: radius.md, backgroundColor: t.surface, boxShadow: `inset 0 0 0 1px ${t.line}`, overflow: "hidden" }}>
-        {props.children}
-      </View>
+    <View style={{ gap: space[2] }}>
+      {props.title ? <Text style={[type.overline, { color: t.inkMuted, marginHorizontal: space[1] }]}>{props.title}</Text> : null}
+      {props.bare ? (
+        props.children
+      ) : (
+        <View style={{ borderRadius: radius.md, backgroundColor: t.surface, boxShadow: `inset 0 0 0 1px ${t.line}`, overflow: "hidden" }}>
+          {props.children}
+        </View>
+      )}
       {props.footnote ? (
-        <Text style={{ fontFamily: font.sans400, fontSize: 13, lineHeight: 18, color: t.inkFaint, paddingHorizontal: 4 }}>
+        <Text style={{ fontFamily: font.sans400, fontSize: 13, lineHeight: 18, color: t.inkFaint, paddingHorizontal: space[1] }}>
           {props.footnote}
         </Text>
       ) : null}
@@ -286,13 +292,13 @@ export function Wordmark(props: { size?: number }) {
 
 export type DiscTone = "warn" | "danger" | "signal" | "info";
 
-/** The large icon disc that heads a full-screen state. */
-export function Disc(props: { tone: DiscTone; icon: IconName; size?: number; ring?: boolean }) {
+/** The large icon disc that heads a full-screen state. A flat fill: no halo. */
+export function Disc(props: { tone: DiscTone; icon: IconName; size?: number }) {
   const t = useTheme();
   const c = {
     warn: { bg: t.warnWash, fg: t.warn, shadow: undefined },
     danger: { bg: t.dangerWash, fg: t.danger, shadow: undefined },
-    signal: { bg: t.signalWash, fg: t.signal, shadow: props.ring === false ? undefined : `0 0 0 14px ${t.signalWash}` },
+    signal: { bg: t.signalWash, fg: t.signal, shadow: undefined },
     info: { bg: t.surfaceRaised, fg: t.inkMuted, shadow: `inset 0 0 0 1px ${t.line}` },
   }[props.tone];
   const s = props.size ?? 96;
